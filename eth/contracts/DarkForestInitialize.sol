@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.6.9;
+pragma solidity ^0.8.0;
 
 // Libraries
 import "./ABDKMath64x64.sol";
@@ -19,7 +19,7 @@ library DarkForestInitialize {
                 defense: 800,
                 silverGrowth: 0,
                 silverCap: 0,
-                barbarianPercentage: 0                
+                barbarianPercentage: 0
             })
         );
 
@@ -33,7 +33,7 @@ library DarkForestInitialize {
                 defense: 800,
                 silverGrowth: 14,
                 silverCap: 50000,
-                barbarianPercentage: 0                
+                barbarianPercentage: 0
             })
         );
 
@@ -47,7 +47,7 @@ library DarkForestInitialize {
                 defense: 600,
                 silverGrowth: 69,
                 silverCap: 250000,
-                barbarianPercentage: 1               
+                barbarianPercentage: 1
             })
         );
 
@@ -61,7 +61,7 @@ library DarkForestInitialize {
                 defense: 400,
                 silverGrowth: 417,
                 silverCap: 2500000,
-                barbarianPercentage: 1                
+                barbarianPercentage: 1
             })
         );
 
@@ -75,7 +75,7 @@ library DarkForestInitialize {
                 defense: 200,
                 silverGrowth: 1667,
                 silverCap: 20000000,
-                barbarianPercentage: 2                
+                barbarianPercentage: 2
             })
         );
 
@@ -89,7 +89,7 @@ library DarkForestInitialize {
                 defense: 200,
                 silverGrowth: 2222,
                 silverCap: 40000000,
-                barbarianPercentage: 5                
+                barbarianPercentage: 5
             })
         );
 
@@ -103,7 +103,7 @@ library DarkForestInitialize {
                 defense: 200,
                 silverGrowth: 2778,
                 silverCap: 50000000,
-                barbarianPercentage: 9                
+                barbarianPercentage: 9
             })
         );
 
@@ -117,14 +117,14 @@ library DarkForestInitialize {
                 defense: 200,
                 silverGrowth: 3333,
                 silverCap: 60000000,
-                barbarianPercentage: 10                
+                barbarianPercentage: 10
             })
         );
     }
 
-    function initializeUpgrades(DarkForestTypes.Upgrade[4][3] storage upgrades)
-        public
-    {
+    function initializeUpgrades(
+        DarkForestTypes.Upgrade[4][3] storage upgrades
+    ) public {
         // defense
         upgrades[0][0] = DarkForestTypes.Upgrade({
             popCapMultiplier: 120,

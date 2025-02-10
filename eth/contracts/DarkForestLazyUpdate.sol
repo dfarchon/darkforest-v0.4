@@ -1,7 +1,6 @@
-pragma solidity ^0.6.9;
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
-import "@openzeppelin/contracts-ethereum-package/contracts/math/Math.sol";
 import "./ABDKMath64x64.sol";
 import "./DarkForestTypes.sol";
 
@@ -24,20 +23,14 @@ library DarkForestLazyUpdate {
         }
 
         if (_planet.silver < _planet.silverCap) {
+            uint256 _timeDiff = _updateToTime - _planetExtendedInfo.lastUpdated;
 
-            uint256 _timeDiff = SafeMath.sub(
-                _updateToTime,
-                _planetExtendedInfo.lastUpdated
-            );
-            uint256 _silverMined = SafeMath.mul(
-                _planet.silverGrowth,
-                _timeDiff
-            );
+            uint256 _silverMined = _planet.silverGrowth * _timeDiff;
 
-            _planet.silver = Math.min(
-                _planet.silverCap,
-                SafeMath.add(_planet.silver, _silverMined)
-            );
+            uint256 _silverCap = _planet.silverCap;
+            uint256 _silverNow = _planet.silver + _silverMined;
+
+            _planet.silver = _silverCap < _silverNow ? _silverCap : _silverNow;
         }
     }
 
@@ -116,28 +109,28 @@ library DarkForestLazyUpdate {
         // checks whether the planet is owned by the player sending ships
         if (_planetArrival.player == _planet.owner) {
             // simply increase the population if so
-            _planet.population = SafeMath.add(
-                _planet.population,
-                _planetArrival.popArriving
-            );
+            _planet.population =
+                _planet.population +
+                _planetArrival.popArriving;
         } else {
-            if (_planet.population > _planetArrival.popArriving * 100 / _planet.defense) {
+            if (
+                _planet.population >
+                (_planetArrival.popArriving * 100) / _planet.defense
+            ) {
                 // handles if the planet population is bigger than the arriving ships
                 // simply reduce the amount of planet population by the arriving ships
-                _planet.population = SafeMath.sub(
-                    _planet.population,
-                    _planetArrival.popArriving * 100 / _planet.defense
-                );
+                _planet.population =
+                    _planet.population -
+                    ((_planetArrival.popArriving * 100) / _planet.defense);
             } else {
                 // handles if the planet population is equal or less the arriving ships
                 // reduce the arriving ships amount with the current population and the
                 // result is the new population of the planet now owned by the attacking
                 // player
                 _planet.owner = _planetArrival.player;
-                _planet.population = SafeMath.sub(
-                    _planetArrival.popArriving,
-                    _planet.population * _planet.defense / 100
-                );
+                _planet.population =
+                    _planetArrival.popArriving -
+                    ((_planet.population * _planet.defense) / 100);
                 if (_planet.population == 0) {
                     // make sure pop is never 0
                     _planet.population = 1;
@@ -145,17 +138,23 @@ library DarkForestLazyUpdate {
             }
         }
 
-        _planet.silver = Math.min(
-            _planet.silverCap,
-            SafeMath.add(_planet.silver, _planetArrival.silverMoved)
-        );
+        uint _silverMax = _planet.silverCap;
+        uint _silverNow = _planet.silver + _planetArrival.silverMoved;
+
+        _planet.silver = _silverMax < _silverNow ? _silverMax : _silverNow;
+
+        _planet.silver =
+            _planet.silverCap -
+            (_planet.silver + _planetArrival.silverMoved);
     }
 
     function _applyPendingEvents(
         uint256 _location,
-        mapping(uint256 => DarkForestTypes.PlanetEventMetadata[]) storage planetEvents,
+        mapping(uint256 => DarkForestTypes.PlanetEventMetadata[])
+            storage planetEvents,
         mapping(uint256 => DarkForestTypes.Planet) storage planets,
-        mapping(uint256 => DarkForestTypes.PlanetExtendedInfo) storage planetsExtendedInfo,
+        mapping(uint256 => DarkForestTypes.PlanetExtendedInfo)
+            storage planetsExtendedInfo,
         mapping(uint256 => DarkForestTypes.ArrivalData) storage planetArrivals
     ) public {
         uint256 _earliestEventTime;
@@ -193,16 +192,19 @@ library DarkForestLazyUpdate {
                     DarkForestTypes.PlanetEventType.ARRIVAL
                 ) {
                     applyArrival(
-                        planets[planetArrivals[planetEvents[_location][_bestIndex]
-                            .id]
-                            .toPlanet],
+                        planets[
+                            planetArrivals[
+                                planetEvents[_location][_bestIndex].id
+                            ].toPlanet
+                        ],
                         planetArrivals[planetEvents[_location][_bestIndex].id]
                     );
                 }
 
                 // swaps the array element with the one in the end, and pop it
-                planetEvents[_location][_bestIndex] = planetEvents[_location][planetEvents[_location]
-                    .length - 1];
+                planetEvents[_location][_bestIndex] = planetEvents[_location][
+                    planetEvents[_location].length - 1
+                ];
                 planetEvents[_location].pop();
             }
         } while (_earliestEventTime <= block.timestamp);

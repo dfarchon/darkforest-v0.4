@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.6.9;
+pragma solidity ^0.8.0;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
 import "./DarkForestTypes.sol";
 import "./DarkForestLazyUpdate.sol";
 import "./DarkForestUtils.sol";
@@ -171,13 +170,10 @@ library DarkForestPlanet {
         }
 
         // initial population (barbarians) and silver
-        _planet.population = SafeMath.div(
-            SafeMath.mul(
-                _planet.populationCap,
-                _planetDefaultStats.barbarianPercentage
-            ),
-            100
-        );
+        _planet.population =
+            (_planet.populationCap * _planetDefaultStats.barbarianPercentage) /
+            100;
+
         if (deepSpace) {
             _planet.population *= 4;
         } else if (mediumSpace) {
@@ -272,9 +268,9 @@ library DarkForestPlanet {
         }
         require(upgradeBranchCurrentLevel < 4, "Upgrade branch already maxed");
 
-
-            DarkForestTypes.Upgrade memory upgrade
-         = upgrades[_branch][upgradeBranchCurrentLevel];
+        DarkForestTypes.Upgrade memory upgrade = upgrades[_branch][
+            upgradeBranchCurrentLevel
+        ];
         uint256 upgradeCost = (planets[_location].silverCap *
             20 *
             (totalLevel + 1)) / 100;

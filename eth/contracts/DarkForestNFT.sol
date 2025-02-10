@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.6.9;
+pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
-import "@openzeppelin/contracts-ethereum-package/contracts/access/AccessControl.sol";
-import "@openzeppelin/contracts-ethereum-package/contracts/GSN/Context.sol";
-import "@openzeppelin/contracts-ethereum-package/contracts/utils/Counters.sol";
-import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC721/ERC721.sol";
-import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC721/ERC721Burnable.sol";
-import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC721/ERC721Pausable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721BurnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721PausableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 
 /**
  * @dev {ERC721} token, including:
@@ -26,21 +27,23 @@ import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC721/ERC721Pa
  */
 contract DarkForestNFT is
     Initializable,
-    ContextUpgradeSafe,
-    AccessControlUpgradeSafe,
-    ERC721BurnableUpgradeSafe,
-    ERC721PausableUpgradeSafe
+    ContextUpgradeable,
+    AccessControlUpgradeable,
+    ERC721BurnableUpgradeable,
+    ERC721PausableUpgradeable
 {
-    using Counters for Counters.Counter;
+    using CountersUpgradeable for CountersUpgradeable.Counter;
 
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
 
-    Counters.Counter private _tokenIdTracker;
+    CountersUpgradeable.Counter private _tokenIdTracker;
 
     uint256[] public planets;
     // NOTE: planetId is different with NFT ID
     mapping(uint256 => address) public planetIdToOwner;
+
+    string private _baseTokenURI;
 
     /**
      * @dev Grants `DEFAULT_ADMIN_ROLE` and `MINTER_ROLE`to the account that
@@ -50,40 +53,32 @@ contract DarkForestNFT is
      * See {ERC721-tokenURI}.
      */
 
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
     function initialize(
         string memory name,
         string memory symbol,
         string memory baseURI
-    ) public {
-        __ERC721PresetMinterPauserAutoId_init(name, symbol, baseURI);
-    }
+    ) public initializer {
+        __Context_init();
+        __AccessControl_init();
+        __ERC721_init(name, symbol);
+        __ERC721Burnable_init();
+        __Pausable_init();
+        __ERC721Pausable_init();
 
-    function __ERC721PresetMinterPauserAutoId_init(
-        string memory name,
-        string memory symbol,
-        string memory baseURI
-    ) internal initializer {
-        __Context_init_unchained();
-        __AccessControl_init_unchained();
-        __ERC165_init_unchained();
-        __ERC721_init_unchained(name, symbol);
-        __ERC721Burnable_init_unchained();
-        __Pausable_init_unchained();
-        __ERC721Pausable_init_unchained();
-        __ERC721PresetMinterPauserAutoId_init_unchained(name, symbol, baseURI);
-    }
-
-    function __ERC721PresetMinterPauserAutoId_init_unchained(
-        string memory name,
-        string memory symbol,
-        string memory baseURI
-    ) internal initializer {
         _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
-
         _setupRole(MINTER_ROLE, _msgSender());
         _setupRole(PAUSER_ROLE, _msgSender());
 
-        _setBaseURI(baseURI);
+        _baseTokenURI = baseURI;
+    }
+
+    function _baseURI() internal view virtual override returns (string memory) {
+        return _baseTokenURI;
     }
 
     /**
@@ -183,9 +178,21 @@ contract DarkForestNFT is
     function _beforeTokenTransfer(
         address from,
         address to,
-        uint256 tokenId
-    ) internal override(ERC721UpgradeSafe, ERC721PausableUpgradeSafe) {
-        super._beforeTokenTransfer(from, to, tokenId);
+        uint256 tokenId,
+        uint256 batchSize
+    ) internal virtual override(ERC721Upgradeable, ERC721PausableUpgradeable) {
+        super._beforeTokenTransfer(from, to, tokenId, batchSize);
+    }
+
+    // Add supportsInterface override
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        virtual
+        override(AccessControlUpgradeable, ERC721Upgradeable)
+        returns (bool)
+    {
+        return super.supportsInterface(interfaceId);
     }
 
     uint256[49] private __gap;

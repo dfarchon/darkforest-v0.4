@@ -1,9 +1,17 @@
-node_modules/*
-build/*
-yarn-error.log
-.gitkeep
-*.env
-.env.prod
+node_modules
+.env
 
-.openzeppelin
-.openzeppelin/.session
+# Hardhat files
+/cache
+/artifacts
+
+# TypeChain files
+/typechain
+/typechain-types
+
+# solidity-coverage files
+/coverage
+/coverage.json
+
+# Hardhat Ignition default folder for deployments against a local node
+ignition/deployments/chain-31337
