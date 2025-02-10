@@ -48,7 +48,7 @@ contract DarkForestCore is Initializable, DarkForestStorageV1 {
 
         DISABLE_ZK_CHECK = _disableZKCheck;
 
-        gameEndTimestamp = 1697464000;
+        gameEndTimestamp = 4911112800;
         target4RadiusConstant = 50;
         target5RadiusConstant = 12;
 

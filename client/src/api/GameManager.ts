@@ -90,7 +90,9 @@ class GameManager extends EventEmitter implements AbstractGameManager {
     return this.contractConstants.PLANET_RARITY;
   }
 
-  private readonly endTimeSeconds: number = 1609372800;
+  // NOTICE: set end time
+  private readonly endTimeSeconds: number = new Date('2125-08-17T14:00:00.000Z').getTime() / 1000;
+  // 4911112800
 
   private constructor(
     account: EthAddress | null,
@@ -655,8 +657,7 @@ class GameManager extends EventEmitter implements AbstractGameManager {
           minedChunksCount++;
           if (minedChunksCount % 8 === 0) {
             terminalEmitter.println(
-              `Hashed ${
-                minedChunksCount * MIN_CHUNK_SIZE ** 2
+              `Hashed ${minedChunksCount * MIN_CHUNK_SIZE ** 2
               } potential home planets...`
             );
           }

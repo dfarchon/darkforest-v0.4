@@ -446,7 +446,9 @@ export default function GameLandingPage(_props: { replayMode: boolean }) {
     const ethConnection = EthereumAccountManager.getInstance();
 
     const address = ethConnection.getAddress();
-    const isWhitelisted = await isAddressWhitelisted(address);
+    // NOTICE: This is a temporary fix to allow the game to load without waiting for the whitelist check
+    // const isWhitelisted = await isAddressWhitelisted(address);
+    const isWhitelisted = true;
 
     terminalEmitter.bashShell('df join v0.4');
     terminalEmitter.print('Checking if whitelisted... (address ');
