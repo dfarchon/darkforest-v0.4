@@ -10,7 +10,7 @@
     "compile": "hardhat compile",
     "hardhat:dev": "hardhat --network localhost",
     "deploy:dev": "NODE_ENV=development hardhat --network localhost deploy --whitelist false",
-    "deploy:prod": "NODE_ENV=production ts-node src/deploy.ts",
+    "deploy:prod": "NODE_ENV=production hardhat --network holesky deploy --whitelist false",
     "test": "oz compile --optimizer on && mocha --exit --recursive test --timeout 25000"
   },
   "devDependencies": {

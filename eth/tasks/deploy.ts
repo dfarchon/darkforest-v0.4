@@ -181,7 +181,7 @@ async function deploy(
         isDev === false
             ? "../client/src/utils/prod_contract_addr.ts"
             : "../client/src/utils/local_contract_addr.ts",
-        `export const contractAddress = '${coreContractAddress}'`,
+        `export const contractAddress = '${coreContractAddress}';`,
     );
 
     console.log("Deploy over. You can quit this process.");

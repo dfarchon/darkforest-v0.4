@@ -22,7 +22,7 @@ class EthereumAccountManager extends EventEmitter {
     if (isProd) {
       url =
         localStorage.getItem('XDAI_RPC_ENDPOINT') ||
-        'https://rpc.xdaichain.com/';
+        'https://rpc.ankr.com/eth_holesky';
     } else {
       url = 'http://localhost:8545';
     }
