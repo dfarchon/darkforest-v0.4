@@ -69,7 +69,8 @@ class EthereumAccountManager extends EventEmitter {
       this.emit('ChangedRPCEndpoint');
     } catch (e) {
       console.error(`error setting rpc endpoint: ${e}`);
-      this.setRpcEndpoint('https://rpc.xdaichain.com/');
+      console.log('Setting rpc endpoint to ankr');
+      this.setRpcEndpoint('https://rpc.ankr.com/eth_holesky');
       return;
     }
   }
