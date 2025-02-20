@@ -497,6 +497,19 @@ export default function GameLandingPage(_props: { replayMode: boolean }) {
       );
       terminalEmitter.println(' ]', TerminalTextStyle.Sub);
 
+      terminalEmitter.print(
+        '\nNeed Holesky ETH? Visit: ',
+        TerminalTextStyle.White
+      );
+      terminalEmitter.printLink(
+        'https://holesky-faucet.pk910.de/',
+        () => {
+          window.open('https://holesky-faucet.pk910.de/', '_blank');
+        },
+        TerminalTextStyle.Blue
+      );
+      terminalEmitter.newline();
+
       if (!isProd) {
         // in development, automatically get some ether from faucet
         if (balance === 0) {
@@ -768,6 +781,56 @@ export default function GameLandingPage(_props: { replayMode: boolean }) {
             TerminalTextStyle.Red,
             true
           );
+
+          // Check if error is related to low balance
+          if (
+            error.toString().toLowerCase().includes('balance too low') ||
+            error.toString().toLowerCase().includes('xdai balance')
+          ) {
+            const address = EthereumAccountManager.getInstance().getAddress();
+
+            terminalEmitter.print('[ ', TerminalTextStyle.Sub);
+            terminalEmitter.printLink(
+              'Copy Public Key',
+              () => {
+                navigator.clipboard.writeText(address);
+                terminalEmitter.println(
+                  '\nPublic key copied to clipboard!',
+                  TerminalTextStyle.Green
+                );
+              },
+              TerminalTextStyle.Blue
+            );
+            terminalEmitter.print(' | ', TerminalTextStyle.Sub);
+            terminalEmitter.printLink(
+              'Copy Private Key',
+              () => {
+                const privateKey =
+                  EthereumAccountManager.getInstance().getPrivateKey();
+                navigator.clipboard.writeText(privateKey);
+                terminalEmitter.println(
+                  '\nPrivate key copied to clipboard!',
+                  TerminalTextStyle.Green
+                );
+              },
+              TerminalTextStyle.Blue
+            );
+            terminalEmitter.println(' ]', TerminalTextStyle.Sub);
+          }
+
+          terminalEmitter.print(
+            '\nNeed Holesky ETH? Visit: ',
+            TerminalTextStyle.White
+          );
+          terminalEmitter.printLink(
+            'https://holesky-faucet.pk910.de/',
+            () => {
+              window.open('https://holesky-faucet.pk910.de/', '_blank');
+            },
+            TerminalTextStyle.Blue
+          );
+          terminalEmitter.newline();
+
           resolve(false);
         });
     });
