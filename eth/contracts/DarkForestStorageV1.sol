@@ -13,10 +13,10 @@ contract DarkForestStorageV1 {
 
     // Game config
     bool public DISABLE_ZK_CHECK;
-    uint256 public constant TIME_FACTOR_HUNDREDTHS = 1000;//100; // dev use only - speedup/slowdown game
+    uint256 public constant TIME_FACTOR_HUNDREDTHS = 400;//100; // dev use only - speedup/slowdown game
     uint256 public constant PERLIN_THRESHOLD_1 = 15;
     uint256 public constant PERLIN_THRESHOLD_2 = 17;
-    uint256 public constant PLANET_RARITY = 2048; //; 16384;
+    uint256 public constant PLANET_RARITY = 6000; //; 16384;
     uint256 public constant SILVER_RARITY_1 = 8;
     uint256 public constant SILVER_RARITY_2 = 8;
     uint256 public constant SILVER_RARITY_3 = 4;
