@@ -498,13 +498,13 @@ export default function GameLandingPage(_props: { replayMode: boolean }) {
       terminalEmitter.println(' ]', TerminalTextStyle.Sub);
 
       terminalEmitter.print(
-        '\nNeed Holesky ETH? Visit: ',
+        '\nNeed ETH? Visit: ',
         TerminalTextStyle.White
       );
       terminalEmitter.printLink(
-        'https://holesky-faucet.pk910.de/',
+        'https://testnets.relay.link/bridge/pyrope',
         () => {
-          window.open('https://holesky-faucet.pk910.de/', '_blank');
+          window.open('https://testnets.relay.link/bridge/pyrope', '_blank');
         },
         TerminalTextStyle.Blue
       );
@@ -819,13 +819,13 @@ export default function GameLandingPage(_props: { replayMode: boolean }) {
           }
 
           terminalEmitter.print(
-            '\nNeed Holesky ETH? Visit: ',
+            '\nNeed ETH? Visit: ',
             TerminalTextStyle.White
           );
           terminalEmitter.printLink(
-            'https://holesky-faucet.pk910.de/',
+            'https://testnets.relay.link/bridge/pyrope',
             () => {
-              window.open('https://holesky-faucet.pk910.de/', '_blank');
+              window.open('https://testnets.relay.link/bridge/pyrope', '_blank');
             },
             TerminalTextStyle.Blue
           );
