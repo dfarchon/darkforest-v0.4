@@ -64,9 +64,11 @@ class EthereumAccountManager extends EventEmitter {
         this.signer = null;
       }
       localStorage.setItem('XDAI_RPC_ENDPOINT', this.rpcURL);
+      console.log('ChangedRPCEndpoint', this.rpcURL);
       this.emit('ChangedRPCEndpoint');
     } catch (e) {
       console.error(`error setting rpc endpoint: ${e}`);
+
       this.setRpcEndpoint(PYROPE_RPC);
       return;
     }
