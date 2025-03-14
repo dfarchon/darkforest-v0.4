@@ -13,7 +13,7 @@ Before getting started, please ensure you have the following tools installed:
 
 - **nvm** (Node Version Manager)
 - **Node.js**
-  - v18.19.1 (required for smart contracts development)
+  - v18.20.7 (required for smart contracts development)
   - v16.20.2 (required for client development)
 - **Package Managers**
   - **pnpm** v9.9.0 (used for smart contracts in `eth/` directory)
@@ -31,7 +31,7 @@ curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.3/install.sh | bash
 
 ```bash
 cd eth/
-nvm use 18.19.1
+nvm use 18.20.7
 pnpm install
 cp .env.example .env
 npx hardhat node

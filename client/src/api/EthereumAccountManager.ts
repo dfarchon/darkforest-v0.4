@@ -4,7 +4,7 @@ import { providers, Contract, Wallet, utils, ContractInterface } from 'ethers';
 import { EthAddress } from '../_types/global/GlobalTypes';
 import { address } from '../utils/CheckedTypeUtils';
 import { EventEmitter } from 'events';
-import { XDAI_CHAIN_ID } from '../utils/constants';
+import { XDAI_CHAIN_ID, PYROPE_RPC } from '../utils/constants';
 
 class EthereumAccountManager extends EventEmitter {
   static instance: EthereumAccountManager | null = null;
@@ -21,8 +21,7 @@ class EthereumAccountManager extends EventEmitter {
     const isProd = process.env.NODE_ENV === 'production';
     if (isProd) {
       url =
-        localStorage.getItem('XDAI_RPC_ENDPOINT') ||
-        'https://rpc.ankr.com/eth_holesky';
+        localStorage.getItem('XDAI_RPC_ENDPOINT') || PYROPE_RPC;
     } else {
       url = 'http://localhost:8545';
     }
@@ -69,8 +68,8 @@ class EthereumAccountManager extends EventEmitter {
       this.emit('ChangedRPCEndpoint');
     } catch (e) {
       console.error(`error setting rpc endpoint: ${e}`);
-      console.log('Setting rpc endpoint to ankr');
-      this.setRpcEndpoint('https://rpc.ankr.com/eth_holesky');
+
+      this.setRpcEndpoint(PYROPE_RPC);
       return;
     }
   }

@@ -10,10 +10,14 @@ export { MIN_CHUNK_SIZE, MAX_CHUNK_SIZE, LOCATION_ID_UB };
 
 // no slash at end plz
 // export const BLOCK_EXPLORER_URL = 'https://blockscout.com/poa/xdai';
-export const BLOCK_EXPLORER_URL = 'https://holesky.etherscan.io';
+// export const BLOCK_EXPLORER_URL = 'https://holesky.etherscan.io';
+export const BLOCK_EXPLORER_URL = 'https://explorer.pyropechain.com';
 
 // export const XDAI_CHAIN_ID = 100; 
-export const XDAI_CHAIN_ID = 17000;
+// export const XDAI_CHAIN_ID = 17000;
+export const XDAI_CHAIN_ID = 695569;
+
+export const PYROPE_RPC = 'https://rpc.pyropechain.com';
 
 
 export const HAT_SIZES = [
