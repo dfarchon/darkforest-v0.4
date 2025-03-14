@@ -221,7 +221,7 @@ export function TxConfirmPopup({ match }: RouteComponentProps) {
       <div>
         <div>
           <b>Gas Fee</b>
-          <span>1GWEI</span>
+          <span>0.001 GWEI</span>
         </div>
         <div>
           <b>Gas Limit</b>

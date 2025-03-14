@@ -425,7 +425,7 @@ class ContractsAPI extends EventEmitter {
     terminalEmitter.newline();
 
     const overrides: providers.TransactionRequest = {
-      gasPrice: 1000000000,
+      gasPrice: 1000000, // 0.001 gwei
       gasLimit: 2000000,
     };
     const tx: providers.TransactionResponse = await this.txRequestExecutor.makeRequest(
@@ -466,7 +466,7 @@ class ContractsAPI extends EventEmitter {
     terminalEmitter.newline();
 
     const overrides: providers.TransactionRequest = {
-      gasPrice: 1000000000,
+      gasPrice: 1000000, // 0.001 gwei
       gasLimit: 2000000,
     };
     const tx: providers.TransactionResponse = await this.txRequestExecutor.makeRequest(
@@ -503,7 +503,7 @@ class ContractsAPI extends EventEmitter {
     const terminalEmitter = TerminalEmitter.getInstance();
 
     const overrides: providers.TransactionRequest = {
-      gasPrice: 1000000000,
+      gasPrice: 1000000, // 0.001 gwei
       gasLimit: 2000000,
     };
     const args = [
@@ -575,7 +575,7 @@ class ContractsAPI extends EventEmitter {
     terminalEmitter.newline();
 
     const overrides: providers.TransactionRequest = {
-      gasPrice: 1000000000,
+      gasPrice: 1000000, // 0.001 gwei
       gasLimit: 500000,
       value: bigInt(1000000000000000000)
         .multiply(2 ** currentHatLevel)

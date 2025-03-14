@@ -67,7 +67,7 @@ We're actively seeking both funding and developers to help bring our future deve
 
 ## 📋 Development TODOs
 
-- [ ] Holesky Testnet Deployment
+- [ ] Redstone Testnet Deployment
 - [ ] Test Scripts
 - [ ] Change Logs & Docs
 
