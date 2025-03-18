@@ -502,9 +502,9 @@ export default function GameLandingPage(_props: { replayMode: boolean }) {
         TerminalTextStyle.White
       );
       terminalEmitter.printLink(
-        'https://testnets.relay.link/bridge/pyrope',
+        'https://pyropechain.com/faucet',
         () => {
-          window.open('https://testnets.relay.link/bridge/pyrope', '_blank');
+          window.open('https://pyropechain.com/faucet', '_blank');
         },
         TerminalTextStyle.Blue
       );
@@ -823,9 +823,9 @@ export default function GameLandingPage(_props: { replayMode: boolean }) {
             TerminalTextStyle.White
           );
           terminalEmitter.printLink(
-            'https://testnets.relay.link/bridge/pyrope',
+            'https://pyropechain.com/faucet',
             () => {
-              window.open('https://testnets.relay.link/bridge/pyrope', '_blank');
+              window.open('https://pyropechain.com/faucet', '_blank');
             },
             TerminalTextStyle.Blue
           );
