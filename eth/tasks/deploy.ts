@@ -49,6 +49,21 @@ const exec = async (command: string): Promise<string> => {
     }
 };
 
+
+// Load game configuration from JSON file
+const loadGameConfig = (configPath: string = './config/gameConfig.json'): any => {
+    const resolvedPath = path.resolve(process.cwd(), configPath);
+    try {
+        const configData = fs.readFileSync(resolvedPath, 'utf8');
+        const config = JSON.parse(configData);
+        console.log(`Game configuration loaded successfully from ${resolvedPath}`);
+        return config;
+    } catch (error) {
+        console.error(`Failed to load game configuration from ${resolvedPath}: ${error}`);
+        throw error;
+    }
+};
+
 // ============================================
 
 const isProd = process.env.NODE_ENV === "production";
@@ -62,44 +77,45 @@ enum Network {
 }
 
 task("deploy", "deploy all contracts")
-    .addOptionalParam("whitelist", "override the whitelist", true, types.boolean)
+    .addOptionalParam("gameconfig", "path to game config file", "./config/gameConfig.json", types.string)
     .setAction(deploy);
 
 async function deploy(
-    args: { whitelist: boolean; fund: number; },
+    args: { gameconfig?: string },
     hre: HardhatRuntimeEnvironment,
 ) {
     const isDev = hre.network.name === "hardhat" || hre.network.name === "localhost";
+    console.log(`Environment: ${isDev ? "Development" : "Production"}`);
+
+    // Load game configuration from specified path or default
+    const configPath = args.gameconfig || "./config/gameConfig.json";
+    console.log(`Loading game configuration from: ${configPath}`);
+    const gameConfig = loadGameConfig(configPath);
 
     const NETWORK: Network = process.env.network as Network;
     const PROJECT_ID = process.env.project_id;
     const DEPLOYER_MNEMONIC = process.env.deployer_mnemonic;
     const CORE_CONTROLLER_MNEMONIC = process.env.core_controller_mnemonic;
-    const WHITELIST_CONTROLLER_MNEMONIC = process.env.whitelist_controller_mnemonic;
     const OZ_ADMIN_MNEMONIC = process.env.oz_admin_mnemonic;
-    const DISABLE_ZK_CHECKS =
-        process.env.DISABLE_ZK_CHECKS === undefined
-            ? undefined
-            : process.env.DISABLE_ZK_CHECKS === "true";
+    const DISABLE_ZK_CHECKS = gameConfig.DISABLE_ZK_CHECK;
+
 
     if (
         !NETWORK ||
         !PROJECT_ID ||
         !DEPLOYER_MNEMONIC ||
         !CORE_CONTROLLER_MNEMONIC ||
-        !WHITELIST_CONTROLLER_MNEMONIC ||
         !OZ_ADMIN_MNEMONIC ||
         DISABLE_ZK_CHECKS === undefined
     ) {
-        console.error("environment variables not found!");
+        console.error("Environment variables not found!");
         console.log(NETWORK);
         console.log(PROJECT_ID);
         console.log(DEPLOYER_MNEMONIC);
         console.log(CORE_CONTROLLER_MNEMONIC);
-        console.log(WHITELIST_CONTROLLER_MNEMONIC);
         console.log(OZ_ADMIN_MNEMONIC);
         console.log(DISABLE_ZK_CHECKS);
-        throw "";
+        throw new Error("Required environment variables missing");
     }
 
     let network_url = "http://localhost:8545";
@@ -119,16 +135,6 @@ async function deploy(
         }
     }
 
-    let whitelistEnabled: boolean;
-    if (typeof args.whitelist === "undefined") {
-        // `whitelistEnabled` defaults to `false` in dev but `true` in prod
-        whitelistEnabled = isDev ? false : true;
-    } else {
-        whitelistEnabled = args.whitelist;
-    }
-
-    console.log('whitelistEnabled:', whitelistEnabled);
-
     if (DISABLE_ZK_CHECKS) {
         console.log("WARNING: ZK checks disabled.");
     }
@@ -140,6 +146,7 @@ async function deploy(
     const [deployer] = await hre.ethers.getSigners();
     // give contract administration over to an admin adress if was provided, or use deployer
     const controllerWalletAddress = deployer.address;
+    gameConfig.adminAddress = controllerWalletAddress;
 
     const requires = hre.ethers.parseEther("0.1");
     // Retrieve the balance of the deployer's address using the provider
@@ -155,34 +162,27 @@ async function deploy(
         );
     }
 
-
-    // deploy the whitelist contract
-    const whitelistContract = await deployWhitelist(
-        controllerWalletAddress,
-        whitelistEnabled,
+    // Deploy core contracts with game configuration
+    const { coreAddress, libraries } = await deployCoreWithConfig(
+        gameConfig,
         hre,
     );
 
-    try {
-        writeEnv(`../whitelist/${isDev ? "dev" : "prod"}.autogen.env`, {
-            mnemonic: DEPLOYER_MNEMONIC,
-            project_id: PROJECT_ID,
-            contract_address: whitelistContract.target.toString(),
-        });
-    } catch { }
-
-    const coreContractAddress = await deployCore(
-        controllerWalletAddress,
-        whitelistContract.target.toString(),
-        DISABLE_ZK_CHECKS,
-        hre,
-    );
     fs.writeFileSync(
         isDev === false
             ? "../client/src/utils/prod_contract_addr.ts"
             : "../client/src/utils/local_contract_addr.ts",
-        `export const contractAddress = '${coreContractAddress}';`,
+        `export const contractAddress = '${coreAddress}';`,
     );
+
+    // Save library addresses to file
+    fs.writeFileSync(
+        isDev === false
+            ? "../client/src/utils/prod_library_addrs.ts"
+            : "../client/src/utils/local_library_addrs.ts",
+        `export const libraryAddresses = ${JSON.stringify(libraries, null, 2)};`
+    );
+
 
     console.log("Deploy over. You can quit this process.");
 
@@ -192,56 +192,64 @@ async function deploy(
 task("client:config", "client config").setAction(clientConfig);
 
 async function clientConfig() {
-    await exec("mkdir ../client/public/contracts");
-    await exec(
-        "cp ./artifacts/contracts/DarkForestCore.sol/DarkForestCore.json ../client/public/contracts/DarkForestCore.json",
-    );
+    // Check if directory exists before creating it
+    try {
+        if (!fs.existsSync('../client/public/contracts')) {
+            await exec("mkdir -p ../client/public/contracts");
+        }
+
+        // Copy the main DarkForestCore contract JSON
+        await exec(
+            "cp ./artifacts/contracts/DarkForestCore.sol/DarkForestCore.json ../client/public/contracts/DarkForestCore.json",
+        );
+
+        // Copy all library contract JSONs
+        const libraryContracts = [
+            "DarkForestInitialize",
+            "DarkForestLazyUpdate",
+            "DarkForestPlanet",
+            "DarkForestUtils",
+            "Verifier"
+        ];
+
+        for (const library of libraryContracts) {
+            console.log(`Copying ${library} contract JSON...`);
+            await exec(
+                `cp ./artifacts/contracts/${library}.sol/${library}.json ../client/public/contracts/${library}.json`,
+            );
+        }
+
+        console.log("All contract JSONs copied to client/public/contracts/");
+
+
+    } catch (error) {
+        console.error("Error in clientConfig:", error);
+    }
 }
 
-export async function deployWhitelist(
-    whitelistControllerAddress: string,
-    whitelist: boolean,
+
+
+export async function deployCoreWithConfig(
+    gameConfig: any,
     hre: HardhatRuntimeEnvironment,
-) {
-    console.log("\n📄 Deploying Whitelist contract...");
-    console.log("→ Controller address:", whitelistControllerAddress);
-    console.log("→ Whitelist enabled:", whitelist);
-
-    const factory = await hre.ethers.getContractFactory("Whitelist");
-    const contract = await factory.deploy();
-    console.log("⏳ Waiting for deployment...");
-    await contract.waitForDeployment();
-    console.log("✅ Whitelist contract deployed to:", contract.target);
-
-    console.log("\n🔧 Initializing Whitelist contract...");
-    const tx = await contract.initialize(whitelistControllerAddress, whitelist);
-    console.log("⏳ Waiting for initialization...");
-    await tx.wait();
-    console.log("✅ Initialization complete");
-    console.log("→ Transaction hash:", tx.hash);
-
-    return contract;
-}
-
-export async function deployCore(
-    coreControllerAddress: string,
-    whitelistAddress: string,
-    DISABLE_ZK_CHECKS: boolean,
-    hre: HardhatRuntimeEnvironment,
-): Promise<string> {
+): Promise<{ coreAddress: string, libraries: Record<string, string> }> {
     console.log("\n📦 Deploying library contracts...");
+
+    const libraries: Record<string, string> = {};
 
     console.log("\n1️⃣ Deploying DarkForestUtils...");
     const factory1 = await hre.ethers.getContractFactory("DarkForestUtils");
     const contract1 = await factory1.deploy();
     await contract1.waitForDeployment();
     console.log("✅ DarkForestUtils deployed to:", contract1.target);
+    libraries["DarkForestUtils"] = contract1.target.toString();
 
     console.log("\n2️⃣ Deploying DarkForestLazyUpdate...");
     const factory2 = await hre.ethers.getContractFactory("DarkForestLazyUpdate");
     const contract2 = await factory2.deploy();
     await contract2.waitForDeployment();
     console.log("✅ DarkForestLazyUpdate deployed to:", contract2.target);
+    libraries["DarkForestLazyUpdate"] = contract2.target.toString();
 
     console.log("\n3️⃣ Deploying DarkForestPlanet...");
     const factory3 = await hre.ethers.getContractFactory("DarkForestPlanet", {
@@ -253,18 +261,21 @@ export async function deployCore(
     const contract3 = await factory3.deploy();
     await contract3.waitForDeployment();
     console.log("✅ DarkForestPlanet deployed to:", contract3.target);
+    libraries["DarkForestPlanet"] = contract3.target.toString();
 
     console.log("\n4️⃣ Deploying DarkForestInitialize...");
     const factory4 = await hre.ethers.getContractFactory("DarkForestInitialize");
     const contract4 = await factory4.deploy();
     await contract4.waitForDeployment();
     console.log("✅ DarkForestInitialize deployed to:", contract4.target);
+    libraries["DarkForestInitialize"] = contract4.target.toString();
 
     console.log("\n5️⃣ Deploying Verifier...");
     const factory5 = await hre.ethers.getContractFactory("Verifier");
     const contract5 = await factory5.deploy();
     await contract5.waitForDeployment();
     console.log("✅ Verifier deployed to:", contract5.target);
+    libraries["Verifier"] = contract5.target.toString();
 
     console.log("\n🌟 Deploying main DarkForestCore contract...");
     const factory = await hre.ethers.getContractFactory("DarkForestCore", {
@@ -280,20 +291,31 @@ export async function deployCore(
     await contract.waitForDeployment();
     console.log("✅ DarkForestCore deployed to:", contract.target);
 
-    console.log("\n🔧 Initializing DarkForestCore...");
-    console.log("→ Controller address:", coreControllerAddress);
-    console.log("→ Whitelist address:", whitelistAddress);
-    console.log("→ ZK checks disabled:", DISABLE_ZK_CHECKS);
+    console.log("\n🔧 Initializing DarkForestCore with config...");
+    console.log("→ Admin address:", gameConfig.adminAddress);
+    console.log("→ Whitelist enabled:", gameConfig.whitelistEnabled);
+    console.log("→ ZK checks disabled:", gameConfig.DISABLE_ZK_CHECK);
 
-    const tx = await contract.initialize(
-        coreControllerAddress,
-        whitelistAddress,
-        DISABLE_ZK_CHECKS,
-    );
+    const tx = await contract.init(gameConfig);
+
     console.log("⏳ Waiting for initialization...");
     await tx.wait();
     console.log("✅ Initialization complete");
     console.log("→ Transaction hash:", tx.hash);
 
-    return contract.target.toString();
+
+
+    await clientConfig();
+
+    console.log("✅ Client config complete");
+
+
+    return {
+        coreAddress: contract.target.toString(),
+        libraries: libraries
+    };
+
 }
+
+
+
