@@ -158,8 +158,6 @@ export default function LobbyLandingPage(_props: { replayMode: boolean }) {
     /* terminal stuff */
     const isProd = process.env.NODE_ENV === 'production';
 
-    console.log('LobbyLandingPage: isProd:', isProd);
-
     let initState = InitState.NONE;
     const [initRenderState, setInitRenderState] = useState<InitRenderState>(
         InitRenderState.NONE
@@ -499,6 +497,12 @@ export default function LobbyLandingPage(_props: { replayMode: boolean }) {
                 terminalEmitter.println('This may be due to missing library addresses. Check that local_library_addrs.ts is properly configured.', TerminalTextStyle.Red);
             } else if (error.message && error.message.includes('user denied')) {
                 terminalEmitter.println('Transaction was rejected in your wallet. Please try again.', TerminalTextStyle.Blue);
+            } else if (error.message && error.message.includes('unknown account')) {
+                terminalEmitter.println('No wallet account found. Please make sure your account is properly set up.', TerminalTextStyle.Red);
+                terminalEmitter.println('Try refreshing the page and going through the account setup again.', TerminalTextStyle.Blue);
+            } else if (error.message && error.message.includes('zero balance')) {
+                terminalEmitter.println('Your account has no tokens. You need some to deploy a contract.', TerminalTextStyle.Red);
+                terminalEmitter.println('For local development, make sure your local blockchain has funds in your account.', TerminalTextStyle.Blue);
             }
         }
     };

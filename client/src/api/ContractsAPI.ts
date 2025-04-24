@@ -635,11 +635,19 @@ class ContractsAPI extends EventEmitter {
     const DarkForestCoreJSON = await fetch('/public/contracts/DarkForestCore.json').then(r => r.json());
 
     // For ethers compatibility
-
     const ethConnection = EthereumAccountManager.getInstance();
 
+    // Get the provider and address
     const provider: providers.JsonRpcProvider = ethConnection.getProvider();
-    const signer = provider.getSigner();
+
+    // Check if an account is selected
+    if (!ethConnection.getAddress()) {
+      throw new Error('No account selected. Please select an account first.');
+    }
+
+    // Instead of using provider.getSigner() which doesn't work with JsonRpcProvider,
+    // we'll use the wallet already set up in EthereumAccountManager
+    const signer = new ethers.Wallet(ethConnection.getPrivateKey(), provider);
 
     // Merge provided config with default config
     const finalConfig: GameConfig = {
@@ -647,7 +655,7 @@ class ContractsAPI extends EventEmitter {
       ...gameConfig
     };
 
-    finalConfig.adminAddress = await signer.getAddress() as EthAddress;
+    finalConfig.adminAddress = ethConnection.getAddress();
 
 
     // Add error handling for missing library address files
@@ -668,6 +676,11 @@ class ContractsAPI extends EventEmitter {
 
 
     try {
+      // Check if we have enough balance to deploy
+      const balance = await provider.getBalance(ethConnection.getAddress());
+      if (balance.eq(0)) {
+        throw new Error("Account has zero balance. You need some xDAI to deploy a contract.");
+      }
 
       // Now deploy the main DarkForestCore contract with libraries
       terminalEmitter.println(`Deploying main DarkForestCore contract...`);
