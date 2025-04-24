@@ -259,6 +259,15 @@ export default function LandingPage() {
           >
             <Typist {...typistProps}>Enter</Typist>
           </CTA>
+
+          <CTA
+            onClick={() => {
+              history.push('/lobby');
+            }}
+            style={{ marginLeft: '64px' }}
+          >
+            <Typist {...typistProps}>Lobby</Typist>
+          </CTA>
         </Header>
 
         {/* Footer */}

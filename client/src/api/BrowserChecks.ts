@@ -3,7 +3,7 @@ import { isBrave, isChrome, isFirefox } from '../utils/Utils';
 
 export enum Incompatibility {
   NoIDB = 'no_idb',
-  NotRopsten = 'not_ropsten',
+  UnsupportedNetwork = 'unsupported_network',
   MobileOrTablet = 'mobile_or_tablet',
   UnsupportedBrowser = 'unsupported_browser',
   NotLoggedInOrEnabled = 'not_logged_in_or_enabled',

@@ -19,6 +19,8 @@ export const XDAI_CHAIN_ID = 695569;
 
 export const PYROPE_RPC = 'https://rpc.pyropechain.com';
 
+export const CHAIN_FACUET = 'https://pyropechain.com/faucet';
+
 
 export const HAT_SIZES = [
   'None',

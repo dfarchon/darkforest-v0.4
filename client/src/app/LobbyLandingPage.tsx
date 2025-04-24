@@ -158,6 +158,8 @@ export default function LobbyLandingPage(_props: { replayMode: boolean }) {
     /* terminal stuff */
     const isProd = process.env.NODE_ENV === 'production';
 
+    console.log('LobbyLandingPage: isProd:', isProd);
+
     let initState = InitState.NONE;
     const [initRenderState, setInitRenderState] = useState<InitRenderState>(
         InitRenderState.NONE

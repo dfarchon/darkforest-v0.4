@@ -35,7 +35,7 @@ import { address } from '../utils/CheckedTypeUtils';
 import { UIDataKey, useStoredUIState } from '../api/UIStateStorageManager';
 import TutorialManager, { TutorialState } from '../utils/TutorialManager';
 import { TerminalPromptType } from '../_types/darkforest/app/board/utils/TerminalTypes';
-import { BLOCK_EXPLORER_URL } from '../utils/constants';
+import { BLOCK_EXPLORER_URL, CHAIN_FACUET } from '../utils/constants';
 
 enum InitState {
   NONE,
@@ -516,9 +516,9 @@ export default function GameLandingPage(_props: { replayMode: boolean }) {
         TerminalTextStyle.White
       );
       terminalEmitter.printLink(
-        'https://pyropechain.com/faucet',
+        CHAIN_FACUET,
         () => {
-          window.open('https://pyropechain.com/faucet', '_blank');
+          window.open(CHAIN_FACUET, '_blank');
         },
         TerminalTextStyle.Blue
       );
