@@ -14,6 +14,7 @@ import {
   SpaceType,
   PlanetResource,
   ChunkFootprint,
+  GameConfig,
 } from '../../_types/global/GlobalTypes';
 import autoBind from 'auto-bind';
 import { EventEmitter } from 'events';
@@ -257,7 +258,7 @@ class GameUIManager extends EventEmitter implements AbstractUIManager {
 
         const dist = Math.sqrt(
           (mouseDownCoords.x - mouseUpOverCoords.x) ** 2 +
-            (mouseDownCoords.y - mouseUpOverCoords.y) ** 2
+          (mouseDownCoords.y - mouseUpOverCoords.y) ** 2
         );
         const myAtk: number = moveShipsDecay(forces, mouseDownPlanet, dist);
         let effPercentSilver = this.getSilverSending(from.locationId);
@@ -602,6 +603,10 @@ class GameUIManager extends EventEmitter implements AbstractUIManager {
     this.gameManager.buyHat(planet.locationId);
   }
 
+  deployContract(gameConfig?: GameConfig): Promise<string> {
+    return this.gameManager.deployContract(gameConfig);
+  }
+
   // non-nullable
   getHomeCoords(): WorldCoords {
     return this.gameManager.getHomeCoords() || { x: 0, y: 0 };
@@ -695,7 +700,7 @@ class GameUIManager extends EventEmitter implements AbstractUIManager {
         if (
           planet &&
           this.radiusMap[planet.planetLevel] >
-            Math.max(Math.abs(x - coords.x), Math.abs(y - coords.y))
+          Math.max(Math.abs(x - coords.x), Math.abs(y - coords.y))
         ) {
           // coords is in hitbox
           if (this.radiusMap[planet.planetLevel] < smallestPlanetRadius) {

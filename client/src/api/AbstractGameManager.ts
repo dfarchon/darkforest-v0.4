@@ -18,6 +18,7 @@ import {
   UnconfirmedUpgrade,
 } from '../_types/darkforest/api/ContractsAPITypes';
 import { MiningPattern } from '../utils/MiningPatterns';
+import { GameConfig } from '../_types/global/GlobalTypes';
 
 export default interface AbstractGameManager extends EventEmitter {
   destroy(): void;
@@ -78,6 +79,7 @@ export default interface AbstractGameManager extends EventEmitter {
   ): AbstractGameManager;
   upgrade(planetId: LocationId, branch: number): AbstractGameManager;
   buyHat(planetId: LocationId): AbstractGameManager;
+  deployContract(gameConfig?: GameConfig): Promise<string>;
 
   // estimation utils. used for scripting only (not in core client functions)
   getMyPlanets(): Planet[];

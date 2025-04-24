@@ -85,15 +85,19 @@ class EthereumAccountManager extends EventEmitter {
     }
   }
 
-  public async loadCoreContract(): Promise<Contract> {
+  public async loadCoreContract(customContractAddress?: string): Promise<Contract> {
     const contractABI = (
       await fetch('/public/contracts/DarkForestCore.json').then((x) => x.json())
     ).abi;
 
     const isProd = process.env.NODE_ENV === 'production';
-    const contractAddress = isProd
+    let contractAddress = isProd
       ? require('../utils/prod_contract_addr').contractAddress
       : require('../utils/local_contract_addr').contractAddress;
+
+    if (customContractAddress) {
+      contractAddress = customContractAddress;
+    }
 
     return this.loadContract(contractAddress, contractABI);
   }
@@ -156,6 +160,14 @@ class EthereumAccountManager extends EventEmitter {
 
   public async waitForTransaction(txHash: string): Promise<TransactionReceipt> {
     return this.provider.waitForTransaction(txHash);
+  }
+
+  /**
+   * Gets the provider for this account manager
+   * @returns The ethers provider
+   */
+  public getProvider(): JsonRpcProvider {
+    return this.provider;
   }
 }
 

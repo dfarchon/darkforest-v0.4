@@ -15,6 +15,7 @@ import {
   Upgrade,
   ChunkFootprint,
   SpaceType,
+  GameConfig,
 } from '../_types/global/GlobalTypes';
 import LocalStorageManager from './LocalStorageManager';
 import { MIN_CHUNK_SIZE } from '../utils/constants';
@@ -162,11 +163,11 @@ class GameManager extends EventEmitter implements AbstractGameManager {
     clearInterval(this.balanceInterval);
   }
 
-  static async create(): Promise<GameManager> {
+  static async create(customContractAddress?: string): Promise<GameManager> {
     // initialize dependencies according to a DAG
 
     // first we initialize the ContractsAPI and get the user's eth account, and load contract constants + state
-    const contractsAPI = await ContractsAPI.create();
+    const contractsAPI = await ContractsAPI.create(customContractAddress);
     const useMockHash = await contractsAPI.zkChecksDisabled();
 
     // then we initialize the local storage manager and SNARK helper
@@ -868,6 +869,11 @@ class GameManager extends EventEmitter implements AbstractGameManager {
       this.contractsAPI.emit(ContractsAPIEvent.TxInitFailed, unconfirmedTx, e);
     }
     return this;
+  }
+
+
+  deployContract(gameConfig?: GameConfig): Promise<string> {
+    return this.contractsAPI.deployContract(gameConfig);
   }
 
   addNewChunk(chunk: ExploredChunkData): GameManager {

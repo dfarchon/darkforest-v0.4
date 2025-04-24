@@ -19,6 +19,7 @@ import {
   utils,
   Event,
   BigNumber as EthersBN,
+  ethers,
 } from 'ethers';
 import _ from 'lodash';
 
@@ -65,6 +66,7 @@ import EthereumAccountManager from './EthereumAccountManager';
 import NotificationManager from '../utils/NotificationManager';
 import { BLOCK_EXPLORER_URL } from '../utils/constants';
 import bigInt from 'big-integer';
+import { GameConfig, DEFAULT_GAME_CONFIG } from '../_types/global/GlobalTypes';
 
 export function isUnconfirmedInit(tx: UnconfirmedTx): tx is UnconfirmedInit {
   return tx.type === EthTxType.INIT;
@@ -249,9 +251,9 @@ class ContractsAPI extends EventEmitter {
     this.txRequestExecutor = new TxExecutor(nonce);
   }
 
-  static async create(): Promise<ContractsAPI> {
+  static async create(customContractAddress?: string): Promise<ContractsAPI> {
     const ethConnection = EthereumAccountManager.getInstance();
-    const contract: Contract = await ethConnection.loadCoreContract();
+    const contract: Contract = await ethConnection.loadCoreContract(customContractAddress);
 
     const account: EthAddress = ethConnection.getAddress();
     const nonce: number = await ethConnection.getNonce();
@@ -603,6 +605,107 @@ class ContractsAPI extends EventEmitter {
     return tx.wait();
   }
 
+
+  linkLibraries(bytecode: string, linkReferences: any, libraries: Record<string, string>) {
+    for (const fileName in linkReferences) {
+      for (const libName in linkReferences[fileName]) {
+        const fixups = linkReferences[fileName][libName];
+        const address = libraries[libName];
+        if (!address) throw new Error(`Missing address for library ${libName}`);
+
+        for (const fixup of fixups) {
+          // Insert address (remove 0x prefix, convert to lowercase)
+          bytecode =
+            bytecode.substring(0, 2 + fixup.start * 2) +
+            address.toLowerCase().replace(/^0x/, '') +
+            bytecode.substring(2 + (fixup.start + fixup.length) * 2);
+        }
+      }
+    }
+    return bytecode;
+  }
+
+  async deployContract(gameConfig?: GameConfig): Promise<string> {
+    const terminalEmitter = TerminalEmitter.getInstance();
+    terminalEmitter.println('Starting DarkForest contract deployment...', TerminalTextStyle.Green);
+
+
+    // Get contract ABIs and bytecode
+    terminalEmitter.println('Loading contract JSONs...', TerminalTextStyle.Sub);
+    const DarkForestCoreJSON = await fetch('/public/contracts/DarkForestCore.json').then(r => r.json());
+
+    // For ethers compatibility
+
+    const ethConnection = EthereumAccountManager.getInstance();
+
+    const provider: providers.JsonRpcProvider = ethConnection.getProvider();
+    const signer = provider.getSigner();
+
+    // Merge provided config with default config
+    const finalConfig: GameConfig = {
+      ...DEFAULT_GAME_CONFIG,
+      ...gameConfig
+    };
+
+    finalConfig.adminAddress = await signer.getAddress() as EthAddress;
+
+
+    // Add error handling for missing library address files
+    let libraryAddresses = {};
+    try {
+      // Look for chain-specific library addresses in local_library_addrs.ts
+      const isProd = process.env.NODE_ENV === 'production';
+      if (isProd) {
+        libraryAddresses = require('../utils/prod_library_addrs').libraryAddresses;
+      } else {
+        libraryAddresses = require('../utils/local_library_addrs').libraryAddresses;
+      }
+    } catch (error) {
+      terminalEmitter.println(`Warning: Library addresses file not found. Using empty object.`, TerminalTextStyle.Red);
+      console.warn('Library addresses file not found:', error);
+    }
+
+
+
+    try {
+
+      // Now deploy the main DarkForestCore contract with libraries
+      terminalEmitter.println(`Deploying main DarkForestCore contract...`);
+
+      const linkedBytecode = this.linkLibraries(DarkForestCoreJSON.bytecode, DarkForestCoreJSON.linkReferences, libraryAddresses);
+
+      const coreFactory = new ethers.ContractFactory(
+        DarkForestCoreJSON.abi,
+        linkedBytecode,
+        signer
+      );
+
+      terminalEmitter.println('Please confirm the deployment transaction in your wallet...', TerminalTextStyle.White);
+      const coreContract = await coreFactory.deploy();
+      terminalEmitter.println(`Core contract deployment transaction submitted: ${coreContract.deployTransaction.hash}`, TerminalTextStyle.Blue);
+      await coreContract.deployed();
+
+      // Initialize the core contract
+      terminalEmitter.println('Initializing DarkForestCore contract...', TerminalTextStyle.Green);
+
+      console.log('finalConfig');
+      console.log(finalConfig);
+
+      const initTx = await coreContract.init(finalConfig);
+
+      terminalEmitter.println(`Initialization transaction submitted: ${initTx.hash}`, TerminalTextStyle.Blue);
+      await initTx.wait();
+
+      terminalEmitter.println(`Contract successfully deployed at: ${coreContract.address}`, TerminalTextStyle.Green);
+
+
+      return coreContract.address;
+    } catch (error) {
+      terminalEmitter.println(`Deployment failed: ${error.message}`, TerminalTextStyle.Red);
+      console.error(error);
+      throw error;
+    }
+  }
   async getConstants(): Promise<ContractConstants> {
     console.log('getting constants');
     const terminalEmitter = TerminalEmitter.getInstance();

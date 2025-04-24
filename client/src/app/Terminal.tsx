@@ -94,6 +94,13 @@ function TerminalFragment({
 }) {
   const [fragmentNo, setFragmentNo] = fragmentHook;
 
+  // Use useEffect to handle state updates after render
+  React.useEffect(() => {
+    if (idx === fragmentNo && (fragment.skipTyping || skipAllTyping)) {
+      setFragmentNo((x) => x + 1);
+    }
+  }, [fragmentNo, idx, fragment.skipTyping, skipAllTyping, setFragmentNo]);
+
   if (idx < fragmentNo) {
     return <span>{fragment.fragment}</span>;
   }
@@ -111,7 +118,7 @@ function TerminalFragment({
         </Typist>
       );
     } else {
-      setFragmentNo((x) => x + 1);
+      // No longer directly call setFragmentNo, handled by useEffect instead
       return <span></span>;
     }
   }
@@ -214,6 +221,14 @@ export default function Terminal() {
 
   const onKeyUp = (e) => {
     (async () => {
+      // console.log('Terminal input KeyUp:', {
+      //   keyCode: e.keyCode,
+      //   key: e.key,
+      //   inputText,
+      //   isTyping,
+      //   userInputEnabled
+      // });
+
       if (e.keyCode === ENTER_KEY_CODE && !e.shiftKey && !isTyping) {
         e.preventDefault();
         if (prompt === TerminalPromptType.BASH) {
@@ -223,10 +238,14 @@ export default function Terminal() {
         }
         print(inputText, TerminalTextStyle.White, true);
         newline();
+
+        const trimmedInput = inputText.trim();
+        console.log('Emitting user input:', trimmedInput);
         TerminalEmitter.getInstance().emit(
           TerminalEvent.UserEnteredInput,
-          inputText
+          trimmedInput
         );
+
         setPreviousInput(inputText);
         setInputHeight(1);
         setInputText('');
@@ -297,7 +316,14 @@ export default function Terminal() {
 
   useEffect(() => {
     if (userInputEnabled) {
+      console.log('Terminal: Input enabled, focusing input field');
       inputRef.current.focus();
+
+      // Ensure input field is visible and show cursor
+      inputRef.current.style.caretColor = 'white';
+    } else {
+      console.log('Terminal: Input disabled, blurring input field');
+      inputRef.current.style.caretColor = 'transparent';
     }
   }, [userInputEnabled]);
 
@@ -335,15 +361,18 @@ export default function Terminal() {
 
       {/* User input prompt */}
 
-      <p
+      <div
         style={{
-          opacity: userInputEnabled ? 1 : 0,
+          opacity: userInputEnabled ? 1 : 0.7, // Increase visibility
           display: 'flex',
           flexDirection: 'row',
           justifyContent: 'flex-start',
         }}
         onClick={() => {
-          if (userInputEnabled && !isTyping) inputRef.current.focus();
+          if (userInputEnabled && !isTyping) {
+            console.log('Terminal: Clicked on input area, focusing input');
+            inputRef.current.focus();
+          }
         }}
       >
         {prompt === TerminalPromptType.BASH ? <BashPrompt /> : <JSPrompt />}
@@ -358,11 +387,11 @@ export default function Terminal() {
         >
           <textarea
             style={{
-              background: 'none',
+              background: userInputEnabled ? 'rgba(0,0,0,0.3)' : 'none', // Add slight background to improve visibility
               outline: 'none',
               border: 'none',
               color: dfstyles.colors.text,
-              // caretColor: 'transparent',
+              caretColor: userInputEnabled ? 'white' : 'transparent',
               height: `${inputHeight}px`,
               resize: 'none',
               flexGrow: 1,
@@ -370,19 +399,26 @@ export default function Terminal() {
             className={'myinput'}
             ref={inputRef}
             onBlur={() => {
-              if (userInputEnabled && alwaysFocusInput)
-                inputRef.current.focus();
+              if (userInputEnabled && alwaysFocusInput) {
+                console.log('Terminal: Input blurred, refocusing');
+                setTimeout(() => inputRef.current.focus(), 10);
+              }
             }}
             onFocus={() => {
-              if (!userInputEnabled && alwaysFocusInput)
+              if (!userInputEnabled && alwaysFocusInput) {
+                console.log('Terminal: Input focused but not enabled, blurring');
                 inputRef.current.blur();
+              } else {
+                console.log('Terminal: Input focused and enabled');
+              }
             }}
             onKeyUp={onKeyUp}
             onKeyDown={preventEnterDefault}
-            onKeyPress={isFirefox() ? () => {} : preventEnterDefault}
+            onKeyPress={isFirefox() ? () => { } : preventEnterDefault}
             value={inputText}
             onChange={(e) => {
               if (userInputEnabled) {
+                console.log('Terminal: Input changed:', e.target.value);
                 setInputText(e.target.value);
               }
             }}
@@ -402,9 +438,10 @@ export default function Terminal() {
             className={'myinput'}
             ref={heightMeasureRef}
             value={inputText}
+            readOnly={true}
           />
         </div>
-      </p>
+      </div>
     </TerminalContainer>
   );
 }
