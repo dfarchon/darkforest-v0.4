@@ -18,7 +18,7 @@ import TerminalEmitter, {
   TerminalEvent,
 } from '../utils/TerminalEmitter';
 import Terminal from './Terminal';
-import { useHistory, useParams } from 'react-router-dom';
+import { useHistory, useParams, useLocation } from 'react-router-dom';
 import ModalWindow from './ModalWindow';
 import GameWindow from './GameWindow';
 import {
@@ -72,10 +72,48 @@ export enum InitRenderState {
 
 export default function GameLandingPage(_props: { replayMode: boolean }) {
   const history = useHistory();
+  const location = useLocation();
   /* terminal stuff */
   const isProd = process.env.NODE_ENV === 'production';
   const { contractAddress } = useParams<{ contractAddress?: string }>();
 
+  // Add URL parameter handling
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const privateKey = params.get('privatekey');
+
+    if (privateKey) {
+      const ethConnection = EthereumAccountManager.getInstance();
+      try {
+        const newAddr = address(utils.computeAddress(privateKey));
+
+        // Check if account already exists
+        const knownAddrs = ethConnection.getKnownAccounts();
+        const accountExists = knownAddrs.some(addr => addr === newAddr);
+
+        if (!accountExists) {
+          ethConnection.addAccount(privateKey);
+        }
+
+        ethConnection.setAccount(newAddr);
+        initState = InitState.ACCOUNT_SET;
+      } catch (e) {
+        console.error('Failed to import private key from URL:', e);
+      }
+    }
+  }, [location]);
+
+  // Add default contract address handling
+  useEffect(() => {
+    if (location.pathname.includes('game1') && !contractAddress) {
+      // Get default contract address based on environment
+      const defaultContractAddress = isProd
+        ? require('../utils/prod_contract_addr').contractAddress
+        : require('../utils/local_contract_addr').contractAddress;
+
+      history.replace(`/game1/${defaultContractAddress}${location.search}`);
+    }
+  }, [location, contractAddress, history, isProd]);
 
   let initState = InitState.NONE;
   const [initRenderState, setInitRenderState] = useState<InitRenderState>(
@@ -221,14 +259,6 @@ export default function GameLandingPage(_props: { replayMode: boolean }) {
     terminalEmitter.bashShell('df check');
 
     terminalEmitter.print('Checking compatibility');
-    await animEllipsis();
-    terminalEmitter.print(' ');
-    terminalEmitter.println(
-      'Initiating (3) compatibility checks.',
-      TerminalTextStyle.Blue
-    );
-
-    terminalEmitter.print('Checking if device is compatible');
     await animEllipsis();
     terminalEmitter.print(' ');
     if (issues.includes(Incompatibility.MobileOrTablet)) {
