@@ -69,6 +69,10 @@ export enum InitRenderState {
     COMPLETE,
 }
 
+interface StyledProps {
+    $isOpen: boolean;
+}
+
 
 // Main page layout container
 const PageLayout = styled.div`
@@ -110,23 +114,53 @@ const TerminalInnerWrapper = styled.div`
 `;
 
 // Config panel area - bottom 2/3 of the screen
-const ConfigPanelContainer = styled.div`
+const ConfigPanelContainer = styled.div<StyledProps>`
   border: 2px solid #00ADE1;
   border-radius: 4px;
   margin: 10px;
   box-shadow: 0 0 10px rgba(0, 173, 225, 0.3);
-  height: 63vh;
+  height: ${props => props.$isOpen ? '63vh' : 'auto'};
   display: flex;
   flex-direction: column;
   overflow: hidden;
 `;
 
+const ConfigHeader = styled.div<StyledProps>`
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  background: #0A1929;
+  cursor: pointer;
+  user-select: none;
+  border-bottom: ${props => props.$isOpen ? '1px solid rgba(0, 173, 225, 0.3)' : 'none'};
+  &:hover {
+    background: rgba(0, 173, 225, 0.1);
+  }
+`;
+
+const HeaderTitle = styled.h2`
+  color: #00ADE1;
+  margin: 0;
+  flex-grow: 1;
+  font-size: 18px;
+`;
+
+const CollapseIcon = styled.span<StyledProps>`
+  color: #00ADE1;
+  font-size: 20px;
+  transform: rotate(${props => props.$isOpen ? '180deg' : '0deg'});
+  transition: transform 0.2s ease;
+`;
+
 // Content area for the config panel
-const ConfigPanelContent = styled.div`
+const ConfigPanelContent = styled.div<StyledProps>`
   flex: 1;
   overflow-y: auto;
-  padding: 25px;
+  padding: ${props => props.$isOpen ? '25px' : '0'};
+  padding-bottom: 80px; /* Add space for the fixed button container */
   color: white;
+  display: ${props => props.$isOpen ? 'block' : 'none'};
+  position: relative;
 `;
 
 // Button container at the bottom of config panel
@@ -136,6 +170,12 @@ const ButtonContainer = styled.div`
   gap: 20px;
   padding: 20px;
   border-top: 1px solid rgba(0, 173, 225, 0.3);
+  background: #0A1929;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 1;
 `;
 
 const GameLink = styled.div`
@@ -152,13 +192,69 @@ const GameLink = styled.div`
   }
 `;
 
+const AdminPanelContainer = styled.div<StyledProps>`
+  border: 2px solid #00ADE1;
+  border-radius: 4px;
+  margin: 10px;
+  box-shadow: 0 0 10px rgba(0, 173, 225, 0.3);
+  height: ${props => props.$isOpen ? '63vh' : 'auto'};
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+`;
+
+interface GameAccount {
+    address: string;
+    privateKey: string;
+    balance: string;
+}
+
+// Add styled input component
+const StyledInput = styled.input`
+  background: rgba(0, 173, 225, 0.1);
+  border: 1px solid #00ADE1;
+  color: white;
+  padding: 8px 12px;
+  border-radius: 4px;
+  width: 100px;
+  margin-right: 10px;
+  &:focus {
+    outline: none;
+    border-color: #00ADE1;
+    box-shadow: 0 0 5px rgba(0, 173, 225, 0.5);
+  }
+`;
+
+// Admin information display area
+const AdminInfoContainer = styled.div`
+  margin-bottom: 20px;
+  padding: 15px;
+  background: rgba(0, 173, 225, 0.1);
+  border: 1px solid #00ADE1;
+  border-radius: 4px;
+`;
+
+// Add a clean divider component after AdminInfoContainer
+const Divider = styled.div`
+  height: 1px;
+  background-color: rgba(0, 173, 225, 0.3);
+  margin: 15px 0;
+`;
+
+// Add section title component
+const SectionTitle = styled.div`
+  font-size: 16px;
+  color: #00ADE1;
+  margin-bottom: 15px;
+  font-weight: bold;
+`;
 
 export default function LobbyLandingPage(_props: { replayMode: boolean }) {
     const history = useHistory();
     /* terminal stuff */
     const isProd = process.env.NODE_ENV === 'production';
 
-    let initState = InitState.NONE;
+    const [initState, setInitState] = useState<InitState>(InitState.NONE);
     const [initRenderState, setInitRenderState] = useState<InitRenderState>(
         InitRenderState.NONE
     );
@@ -177,8 +273,20 @@ export default function LobbyLandingPage(_props: { replayMode: boolean }) {
         gameUIManagerRef.current
     );
 
-    const [deployedContractAddress, setDeployedContractAddress] = useState<string | null>(null);
+    const defaultContractAddress = isProd
+        ? require('../utils/prod_contract_addr').contractAddress
+        : require('../utils/local_contract_addr').contractAddress;
+
+    const [deployedContractAddress, setDeployedContractAddress] = useState<string>(defaultContractAddress);
     const [gameConfig, setGameConfig] = useState<GameConfig | undefined>(undefined);
+    const [isConfigOpen, setIsConfigOpen] = useState(true);
+    const [isAdminOpen, setIsAdminOpen] = useState(false);
+    const [gameAccounts, setGameAccounts] = useState<GameAccount[]>([]);
+    const [isGeneratingAccounts, setIsGeneratingAccounts] = useState(false);
+    const [isSavingAccounts, setIsSavingAccounts] = useState(false);
+    const [adminBalance, setAdminBalance] = useState<string>('0');
+    const [transferAmount, setTransferAmount] = useState<string>('0.01');
+    const [isTransferring, setIsTransferring] = useState<boolean>(false);
 
     // Disable body scrolling
     useEffect(() => {
@@ -258,7 +366,7 @@ export default function LobbyLandingPage(_props: { replayMode: boolean }) {
         // Skip compatibility checks
         terminalEmitter.println('All systems ready.', TerminalTextStyle.Green);
         terminalEmitter.newline();
-        initState = InitState.COMPATIBILITY_CHECKS_PASSED;
+        setInitState(InitState.COMPATIBILITY_CHECKS_PASSED);
     };
 
     const advanceStateFromCompatibilityPassed = async () => {
@@ -283,11 +391,11 @@ export default function LobbyLandingPage(_props: { replayMode: boolean }) {
         console.log('LobbyLandingPage: User selected option:', userInput);
 
         if (userInput.toLowerCase() === 'a') {
-            initState = InitState.DISPLAY_ACCOUNTS;
+            setInitState(InitState.DISPLAY_ACCOUNTS);
         } else if (userInput.toLowerCase() === 'n') {
-            initState = InitState.GENERATE_ACCOUNT;
+            setInitState(InitState.GENERATE_ACCOUNT);
         } else if (userInput.toLowerCase() === 'i') {
-            initState = InitState.IMPORT_ACCOUNT;
+            setInitState(InitState.IMPORT_ACCOUNT);
         } else {
             terminalEmitter.println(`Unrecognized input: '${userInput}'. Please try again.`);
         }
@@ -309,7 +417,7 @@ export default function LobbyLandingPage(_props: { replayMode: boolean }) {
             const addr = knownAddrs[selection - 1];
             try {
                 ethConnection.setAccount(addr);
-                initState = InitState.ACCOUNT_SET;
+                setInitState(InitState.ACCOUNT_SET);
             } catch (e) {
                 terminalEmitter.println(
                     'An unknown error occurred. please try again.',
@@ -345,7 +453,7 @@ export default function LobbyLandingPage(_props: { replayMode: boolean }) {
             );
 
             await getUserInput();
-            initState = InitState.ACCOUNT_SET;
+            setInitState(InitState.ACCOUNT_SET);
         } catch (e) {
             terminalEmitter.println(
                 'An unknown error occurred. please try again.',
@@ -375,7 +483,7 @@ export default function LobbyLandingPage(_props: { replayMode: boolean }) {
             ethConnection.addAccount(newSKey);
             ethConnection.setAccount(newAddr);
             terminalEmitter.println(`Imported account with address ${newAddr}.`);
-            initState = InitState.ACCOUNT_SET;
+            setInitState(InitState.ACCOUNT_SET);
         } catch (e) {
             terminalEmitter.println(
                 'An unknown error occurred. please try again.',
@@ -434,7 +542,7 @@ export default function LobbyLandingPage(_props: { replayMode: boolean }) {
         terminalEmitter.println(' ]', TerminalTextStyle.Sub);
 
         terminalEmitter.println('\nAccount setup complete. You can now configure and deploy a game.', TerminalTextStyle.Green);
-        initState = InitState.COMPLETE;
+        setInitState(InitState.COMPLETE);
         setInitRenderState(InitRenderState.COMPLETE);
     };
 
@@ -534,7 +642,6 @@ export default function LobbyLandingPage(_props: { replayMode: boolean }) {
     };
 
     const printGameConfig = () => {
-
         console.log(JSON.stringify(gameConfig, null, 2));
     };
 
@@ -544,19 +651,14 @@ export default function LobbyLandingPage(_props: { replayMode: boolean }) {
 
             if (initState === InitState.NONE) {
                 await advanceStateFromNone();
-                setTimeout(() => advanceState(), 0);
             } else if (initState === InitState.COMPATIBILITY_CHECKS_PASSED) {
                 await advanceStateFromCompatibilityPassed();
-                setTimeout(() => advanceState(), 0);
             } else if (initState === InitState.DISPLAY_ACCOUNTS) {
                 await advanceStateFromDisplayAccounts();
-                setTimeout(() => advanceState(), 0);
             } else if (initState === InitState.GENERATE_ACCOUNT) {
                 await advanceStateFromGenerateAccount();
-                setTimeout(() => advanceState(), 0);
             } else if (initState === InitState.IMPORT_ACCOUNT) {
                 await advanceStateFromImportAccount();
-                setTimeout(() => advanceState(), 0);
             } else if (initState === InitState.ACCOUNT_SET) {
                 await advanceStateFromAccountSet();
                 // Terminal flow ends here with account setup
@@ -565,11 +667,11 @@ export default function LobbyLandingPage(_props: { replayMode: boolean }) {
             console.log('LobbyLandingPage: After processing, state is now:', initState);
         } catch (error) {
             console.error('LobbyLandingPage: Error in advanceState:', error);
-            // Try to continue after error occurs
-            setTimeout(() => advanceState(), 1000);
+
         }
     };
 
+    // Initial setup
     useEffect(() => {
         advanceState();
 
@@ -582,24 +684,50 @@ export default function LobbyLandingPage(_props: { replayMode: boolean }) {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
+    // Handle state transitions
+    useEffect(() => {
+        if (initState !== InitState.NONE &&
+            initState !== InitState.COMPLETE &&
+            initState !== InitState.TERMINATED) {
+            advanceState();
+        }
+    }, [initState]);
+
     // Setup game manager when needed
     useEffect(() => {
+        console.log(initState, gameUIManagerRef.current);
         if (initState === InitState.COMPLETE && !gameUIManagerRef.current) {
+
             const setupGameManager = async () => {
                 try {
-                    const newGameManager: AbstractGameManager = await GameManager.create();
-                    window.df = newGameManager;
-                    const newGameUIManager = GameUIManager.create(newGameManager);
-                    window.uiManager = newGameUIManager;
-                    gameUIManagerRef.current = newGameUIManager;
+                    // Store initialization in window to prevent redundant calls
+                    if (!window.df) {
+                        const terminalEmitter = TerminalEmitter.getInstance();
+                        terminalEmitter.println('Initializing game manager...', TerminalTextStyle.Blue);
 
-                    // Initialize game config if not set
-                    if (!gameConfig) {
-                        setGameConfig(DEFAULT_GAME_CONFIG);
+                        const newGameManager: AbstractGameManager = await GameManager.create();
+                        window.df = newGameManager;
+                        const newGameUIManager = GameUIManager.create(newGameManager);
+                        window.uiManager = newGameUIManager;
+                        gameUIManagerRef.current = newGameUIManager;
+
+                        // Initialize game config if not set
+                        if (!gameConfig) {
+                            setGameConfig(DEFAULT_GAME_CONFIG);
+                        }
+
+                        terminalEmitter.println('Game manager initialized successfully. You can now configure and deploy a game.', TerminalTextStyle.Green);
+
+                    } else {
+                        // Game manager already exists, just use that
+                        console.log('Game manager already exists, reusing');
+                        gameUIManagerRef.current = window.uiManager as GameUIManager;
+
+                        // Initialize game config if not set
+                        if (!gameConfig) {
+                            setGameConfig(DEFAULT_GAME_CONFIG);
+                        }
                     }
-
-                    const terminalEmitter = TerminalEmitter.getInstance();
-                    terminalEmitter.println('Game manager initialized successfully.', TerminalTextStyle.Green);
                 } catch (error) {
                     console.error('Failed to initialize game manager:', error);
                     const terminalEmitter = TerminalEmitter.getInstance();
@@ -609,7 +737,192 @@ export default function LobbyLandingPage(_props: { replayMode: boolean }) {
 
             setupGameManager();
         }
-    }, [initState, gameConfig]);
+    }, [initState]);
+
+    const toggleConfigPanel = () => {
+        setIsConfigOpen(!isConfigOpen);
+        setIsAdminOpen(isConfigOpen); // Open admin when config closes
+    };
+
+    const toggleAdminPanel = () => {
+        setIsAdminOpen(!isAdminOpen);
+        setIsConfigOpen(isAdminOpen); // Open config when admin closes
+    };
+
+    // Get admin account balance
+    const fetchAdminBalance = async () => {
+        try {
+            const ethConnection = EthereumAccountManager.getInstance();
+            const address = ethConnection.getAddress();
+            const balance = await ethConnection.getBalance(address);
+            setAdminBalance(balance.toString()); // Ensure balance is a string
+        } catch (error) {
+            console.error('Error fetching admin balance:', error);
+        }
+    };
+
+    // Initialize admin balance on component mount
+    useEffect(() => {
+        if (initState === InitState.COMPLETE) {
+            fetchAdminBalance();
+        }
+    }, [initState]);
+
+    // Transfer funds to game account
+    const transferFunds = async (targetAddress: string, index: number) => {
+        setIsTransferring(true);
+        const terminalEmitter = TerminalEmitter.getInstance();
+
+        try {
+            const ethConnection = EthereumAccountManager.getInstance();
+            const adminAddress = ethConnection.getAddress();
+
+            // Check balance before proceeding
+            const currentBalance = await ethConnection.getBalance(adminAddress);
+            const transferAmountInEther = parseFloat(transferAmount);
+
+            // Convert current balance to a comparable number
+            const currentBalanceInEther = parseFloat(currentBalance.toString());
+
+            // Add a small buffer for gas costs (0.001 ETH)
+            const requiredAmount = transferAmountInEther + 0.001;
+
+            // Check if there's enough balance
+            if (currentBalanceInEther < requiredAmount) {
+                terminalEmitter.println(`Insufficient balance. You have ${currentBalanceInEther.toFixed(4)} ETH but need at least ${requiredAmount.toFixed(4)} ETH (including gas).`, TerminalTextStyle.Red);
+                alert(`Insufficient balance. You have ${currentBalanceInEther.toFixed(4)} ETH but need at least ${requiredAmount.toFixed(4)} ETH (including gas).`);
+                setIsTransferring(false);
+                return;
+            }
+
+            // Execute transfer using web3 methods
+            terminalEmitter.println(`Transferring ${transferAmount} ETH to Account ${index + 1}...`, TerminalTextStyle.Blue);
+
+            // Get provider from ethConnection
+            const provider = ethConnection.getProvider();
+            const wallet = new Wallet(ethConnection.getPrivateKey(), provider);
+
+            // Execute transfer
+            const tx = await wallet.sendTransaction({
+                to: targetAddress,
+                value: utils.parseEther(transferAmount),
+                // Add explicit gas limit to avoid estimation errors
+                gasLimit: 21000, // Standard gas limit for simple ETH transfers
+            });
+
+            // Wait for transaction confirmation
+            await tx.wait();
+
+            // Update admin balance
+            const adminNewBalance = await ethConnection.getBalance(adminAddress);
+            setAdminBalance(adminNewBalance.toString()); // Ensure balance is a string
+
+            // Update account balances
+            const updatedAccounts = await Promise.all(
+                gameAccounts.map(async (acc) => {
+                    const newBalance = await ethConnection.getBalance(address(acc.address));
+                    return {
+                        address: acc.address,
+                        privateKey: acc.privateKey,
+                        balance: newBalance.toString() // Convert number to string
+                    };
+                })
+            );
+            setGameAccounts(updatedAccounts);
+
+            terminalEmitter.println(`Successfully transferred ${transferAmount} ETH to Account ${index + 1}`, TerminalTextStyle.Green);
+        } catch (error) {
+            console.error('Transfer failed:', error);
+
+            // Improved error handling
+            let errorMessage = 'Unknown error';
+
+            if (error.message) {
+                // Check for common error patterns and provide more helpful messages
+                if (error.message.includes('insufficient funds')) {
+                    errorMessage = 'Insufficient funds for transfer. Please ensure you have enough ETH in your account.';
+                    alert('Insufficient funds for transfer. Please ensure you have enough ETH in your account.');
+                } else if (error.message.includes('gas required exceeds')) {
+                    errorMessage = 'Gas required exceeds allowance. Try with a smaller amount or increase gas limit.';
+                } else if (error.message.includes('gas price')) {
+                    errorMessage = 'Gas price too low. Please try again with a higher gas price.';
+                } else if (error.message.includes('nonce')) {
+                    errorMessage = 'Transaction nonce error. Please refresh and try again.';
+                } else if (error.message.includes('SERVER_ERROR') || error.message.includes('processing response')) {
+                    errorMessage = 'Network or server error. Please check your connection and try again.';
+                } else {
+                    // For other errors, show a cleaner version of the message
+                    errorMessage = error.message.replace(/\{.*\}/g, '').slice(0, 100);
+                }
+            }
+
+            terminalEmitter.println(`Transfer failed: ${errorMessage}`, TerminalTextStyle.Red);
+        }
+
+        setIsTransferring(false);
+    };
+
+    const generateGameAccounts = async () => {
+        setIsGeneratingAccounts(true);
+        const newAccounts: GameAccount[] = [];
+
+        try {
+            for (let i = 0; i < 6; i++) {
+                const wallet = Wallet.createRandom();
+                const balance = await EthereumAccountManager.getInstance().getBalance(address(wallet.address));
+                newAccounts.push({
+                    address: wallet.address,
+                    privateKey: wallet.privateKey,
+                    balance: balance.toString()
+                });
+            }
+            setGameAccounts(newAccounts);
+
+            const terminalEmitter = TerminalEmitter.getInstance();
+            terminalEmitter.println('Generated 6 new game accounts successfully.', TerminalTextStyle.White);
+        } catch (error) {
+            console.error('Error generating accounts:', error);
+            const terminalEmitter = TerminalEmitter.getInstance();
+            terminalEmitter.println('Failed to generate accounts. See console for details.', TerminalTextStyle.Red);
+        }
+
+        setIsGeneratingAccounts(false);
+    };
+
+    const saveAccountsToFile = () => {
+        setIsSavingAccounts(true);
+        try {
+            // Add game links to each account and remove balance
+            const accountsData = gameAccounts.map(acc => ({
+                address: acc.address,
+                privateKey: acc.privateKey,
+                gameLink: `${window.location.origin}/game1/${deployedContractAddress}?privateKey=${acc.privateKey}`
+            }));
+
+            const blob = new Blob([JSON.stringify(accountsData, null, 2)], { type: 'application/json' });
+            // First convert to unknown, then to string as recommended by the error message
+            const downloadUrl = URL.createObjectURL(blob) as unknown as string;
+            const link = document.createElement('a');
+            link.download = 'game_accounts.json';
+            link.href = downloadUrl;
+            link.click();
+            URL.revokeObjectURL(downloadUrl);
+
+            const terminalEmitter = TerminalEmitter.getInstance();
+            terminalEmitter.println('Game links saved to game_accounts.json', TerminalTextStyle.White);
+        } catch (error) {
+            console.error('Error saving accounts:', error);
+            const terminalEmitter = TerminalEmitter.getInstance();
+            terminalEmitter.println('Failed to save accounts. See console for details.', TerminalTextStyle.Red);
+        }
+        setIsSavingAccounts(false);
+    };
+
+    const copyToClipboardWithMessage = (text: string, message: string) => {
+        navigator.clipboard.writeText(text);
+        const terminalEmitter = TerminalEmitter.getInstance();
+        terminalEmitter.println(message, TerminalTextStyle.White);
+    };
 
     return (
         <Wrapper initRender={initRenderState} terminalEnabled={terminalEnabled}>
@@ -631,42 +944,220 @@ export default function LobbyLandingPage(_props: { replayMode: boolean }) {
                 </TerminalContainer>
 
                 {/* Configuration panel - bottom 2/3 */}
-                <ConfigPanelContainer>
-                    {/* Configuration panel content area - replace placeholder with GameConfigPanel */}
-                    <ConfigPanelContent>
-                        <GameConfigPanel
-                            onSaveConfig={handleSaveSettings}
-                            initialConfig={gameConfig}
-                        />
-                    </ConfigPanelContent>
+                <ConfigPanelContainer $isOpen={isConfigOpen}>
+                    <ConfigHeader onClick={toggleConfigPanel} $isOpen={isConfigOpen}>
+                        <HeaderTitle>Game Configuration</HeaderTitle>
+                        <CollapseIcon $isOpen={isConfigOpen}>▼</CollapseIcon>
+                    </ConfigHeader>
 
-                    {/* Button row at the bottom of config panel */}
-                    <ButtonContainer>
-                        <BlueButton onClick={resetSettings}>
-                            Reset to Default
-                        </BlueButton>
-                        {/* 
-                        <BlueButton onClick={printGameConfig}>
-                            Print Game Config
-                        </BlueButton> */}
-
-                        <BlueButton onClick={deployContract}>
-                            Deploy Universe
-                        </BlueButton>
-
-                        {deployedContractAddress && (
-                            <>
-                                <BlueButton onClick={navigateToGame}>
-                                    Open Game
+                    <ConfigPanelContent $isOpen={isConfigOpen}>
+                        {initState === InitState.COMPLETE ? (<>
+                            <GameConfigPanel
+                                onSaveConfig={handleSaveSettings}
+                                initialConfig={gameConfig}
+                            />
+                            <ButtonContainer>
+                                <BlueButton onClick={resetSettings}>
+                                    Reset to Default
                                 </BlueButton>
-
-                                <BlueButton onClick={copyToClipboard}>
-                                    Copy Link
+                                <BlueButton onClick={deployContract}>
+                                    Deploy Universe
                                 </BlueButton>
-                            </>
+                                {deployedContractAddress && (
+                                    <>
+                                        <BlueButton onClick={navigateToGame}>
+                                            Open Game
+                                        </BlueButton>
+                                        <BlueButton onClick={copyToClipboard}>
+                                            Copy Link
+                                        </BlueButton>
+                                    </>
+                                )}
+                            </ButtonContainer>
+                        </>
+                        ) : (
+                            <div style={{
+                                padding: '40px 20px',
+                                color: '#888',
+                                textAlign: 'center',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                gap: '10px'
+                            }}>
+                                <div style={{ fontSize: '18px', color: '#00ADE1' }}>⚠️ Account Required</div>
+                                <div>Please complete the account setup in the terminal above to access game configuration.</div>
+                            </div>
                         )}
-                    </ButtonContainer>
+                    </ConfigPanelContent>
                 </ConfigPanelContainer>
+
+                <AdminPanelContainer $isOpen={isAdminOpen}>
+                    <ConfigHeader onClick={toggleAdminPanel} $isOpen={isAdminOpen}>
+                        <HeaderTitle>Admin Panel</HeaderTitle>
+                        <CollapseIcon $isOpen={isAdminOpen}>▼</CollapseIcon>
+                    </ConfigHeader>
+
+                    <ConfigPanelContent $isOpen={isAdminOpen}>
+                        {initState === InitState.COMPLETE ? (
+                            <div style={{ padding: '20px' }}>
+                                <AdminInfoContainer>
+                                    <SectionTitle>Admin Account Information</SectionTitle>
+                                    <div style={{ marginBottom: '5px' }}>
+                                        <span style={{ marginRight: '10px', color: '#888' }}>Address:</span>
+                                        <span>{EthereumAccountManager.getInstance().getAddress()}</span>
+                                    </div>
+                                    <div style={{ marginBottom: '5px' }}>
+                                        <span style={{ marginRight: '10px', color: '#888' }}>Balance:</span>
+                                        <span style={{ color: '#00ADE1' }}>{adminBalance} ETH</span>
+                                    </div>
+                                    <div style={{ marginBottom: '5px' }}>
+                                        <span style={{ marginRight: '10px', color: '#888' }}>Game Link:</span>
+                                        <span>
+                                            {deployedContractAddress ?
+                                                `${window.location.origin}/game1/${deployedContractAddress}` :
+                                                'No game deployed yet'}
+                                        </span>
+                                    </div>
+                                </AdminInfoContainer>
+
+                                <Divider />
+
+                                <SectionTitle>Account Management</SectionTitle>
+                                <div style={{
+                                    display: 'flex',
+                                    gap: '10px',
+                                    marginBottom: '20px'
+                                }}>
+                                    <BlueButton
+                                        onClick={generateGameAccounts}
+                                        style={{
+                                            opacity: isGeneratingAccounts ? 0.5 : 1,
+                                            pointerEvents: isGeneratingAccounts ? 'none' : 'auto' as any
+                                        }}
+                                    >
+                                        {isGeneratingAccounts ? 'Generating...' : 'Generate 6 Accounts'}
+                                    </BlueButton>
+                                    <BlueButton
+                                        onClick={saveAccountsToFile}
+                                        style={{
+                                            opacity: (isSavingAccounts || gameAccounts.length === 0) ? 0.5 : 1,
+                                            pointerEvents: (isSavingAccounts || gameAccounts.length === 0) ? 'none' : 'auto' as any
+                                        }}
+                                    >
+                                        {isSavingAccounts ? 'Saving...' : 'Save Accounts to File'}
+                                    </BlueButton>
+                                </div>
+
+                                <Divider />
+
+                                <SectionTitle>Batch Transfer</SectionTitle>
+                                <div style={{ marginBottom: '15px' }}>
+                                    <div style={{ marginBottom: '10px', display: 'flex', alignItems: 'center' }}>
+                                        <span style={{ marginRight: '10px', color: '#888' }}>Amount to transfer:</span>
+                                        <StyledInput
+                                            type="number"
+                                            value={transferAmount}
+                                            onChange={(e) => setTransferAmount(e.target.value)}
+                                            step="0.001"
+                                            min="0"
+                                        />
+                                        <span style={{ color: '#888' }}>ETH</span>
+                                    </div>
+                                </div>
+
+                                {gameAccounts.length > 0 && (
+                                    <div style={{
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        gap: '10px',
+                                        maxHeight: 'calc(100vh - 350px)',
+                                        overflowY: 'auto'
+                                    }}>
+                                        {gameAccounts.map((account, index) => (
+                                            <div
+                                                key={account.address}
+                                                style={{
+                                                    background: 'rgba(0, 173, 225, 0.1)',
+                                                    border: '1px solid #00ADE1',
+                                                    borderRadius: '4px',
+                                                    padding: '12px 15px',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '10px',
+                                                    justifyContent: 'space-between'
+                                                }}
+                                            >
+                                                <div style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '15px',
+                                                    color: '#888'
+                                                }}>
+                                                    <span>Account {index + 1}</span>
+                                                    <span style={{ color: '#00ADE1' }}>Balance: {account.balance} ETH</span>
+                                                </div>
+                                                <div style={{
+                                                    display: 'flex',
+                                                    gap: '10px'
+                                                }}>
+                                                    <BlueButton
+                                                        onClick={() => copyToClipboardWithMessage(
+                                                            account.address,
+                                                            `Address copied for Account ${index + 1}`
+                                                        )}
+                                                    >
+                                                        Public Key
+                                                    </BlueButton>
+                                                    <BlueButton
+                                                        onClick={() => copyToClipboardWithMessage(
+                                                            account.privateKey,
+                                                            `Private key copied for Account ${index + 1}`
+                                                        )}
+                                                    >
+                                                        Private Key
+                                                    </BlueButton>
+                                                    <BlueButton
+                                                        onClick={() => copyToClipboardWithMessage(
+                                                            `${window.location.origin}/game1/${deployedContractAddress}?privateKey=${account.privateKey}`,
+                                                            `Game URL with private key copied for Account ${index + 1}`
+                                                        )}
+                                                    >
+                                                        Game URL
+                                                    </BlueButton>
+                                                    <BlueButton
+                                                        onClick={() => transferFunds(account.address, index)}
+                                                        style={{
+                                                            opacity: (isTransferring || !deployedContractAddress) ? 0.5 : 1,
+                                                            pointerEvents: (isTransferring || !deployedContractAddress) ? 'none' : 'auto' as any
+                                                        }}
+                                                    >
+                                                        Transfer
+                                                    </BlueButton>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <div style={{
+                                padding: '40px 20px',
+                                color: '#888',
+                                textAlign: 'center',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                gap: '10px'
+                            }}>
+                                <div style={{ fontSize: '18px', color: '#00ADE1' }}>⚠️ Account Required</div>
+                                <div>Please complete the account setup in the terminal above to access admin features.</div>
+                            </div>
+                        )}
+                    </ConfigPanelContent>
+                </AdminPanelContainer>
+
+
             </PageLayout>
         </Wrapper>
     );
