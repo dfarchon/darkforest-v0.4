@@ -80,7 +80,7 @@ export default function GameLandingPage(_props: { replayMode: boolean }) {
   // Add URL parameter handling
   useEffect(() => {
     const params = new URLSearchParams(location.search);
-    const privateKey = params.get('privatekey');
+    const privateKey = params.get('privateKey');
 
     if (privateKey) {
       const ethConnection = EthereumAccountManager.getInstance();
