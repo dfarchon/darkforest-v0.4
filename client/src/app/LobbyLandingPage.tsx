@@ -287,6 +287,8 @@ export default function LobbyLandingPage(_props: { replayMode: boolean }) {
     const [adminBalance, setAdminBalance] = useState<string>('0');
     const [transferAmount, setTransferAmount] = useState<string>('0.01');
     const [isTransferring, setIsTransferring] = useState<boolean>(false);
+    const [isGameManagerInitialized, setIsGameManagerInitialized] = useState<boolean>(false);
+    const [isTransferringToAll, setIsTransferringToAll] = useState<boolean>(false);
 
     // Disable body scrolling
     useEffect(() => {
@@ -717,7 +719,7 @@ export default function LobbyLandingPage(_props: { replayMode: boolean }) {
                         }
 
                         terminalEmitter.println('Game manager initialized successfully. You can now configure and deploy a game.', TerminalTextStyle.Green);
-
+                        setIsGameManagerInitialized(true);
                     } else {
                         // Game manager already exists, just use that
                         console.log('Game manager already exists, reusing');
@@ -727,6 +729,8 @@ export default function LobbyLandingPage(_props: { replayMode: boolean }) {
                         if (!gameConfig) {
                             setGameConfig(DEFAULT_GAME_CONFIG);
                         }
+
+                        setIsGameManagerInitialized(true);
                     }
                 } catch (error) {
                     console.error('Failed to initialize game manager:', error);
@@ -924,6 +928,94 @@ export default function LobbyLandingPage(_props: { replayMode: boolean }) {
         terminalEmitter.println(message, TerminalTextStyle.White);
     };
 
+    // Add batch transfer function
+    const transferToAllAccounts = async () => {
+        if (gameAccounts.length === 0) {
+            const terminalEmitter = TerminalEmitter.getInstance();
+            terminalEmitter.println('No accounts to transfer to. Please generate accounts first.', TerminalTextStyle.Red);
+            return;
+        }
+
+        setIsTransferringToAll(true);
+        const terminalEmitter = TerminalEmitter.getInstance();
+        terminalEmitter.println(`Starting batch transfer of ${transferAmount} ETH to all ${gameAccounts.length} accounts...`, TerminalTextStyle.Blue);
+
+        try {
+            const ethConnection = EthereumAccountManager.getInstance();
+            const adminAddress = ethConnection.getAddress();
+
+            // Check if admin has enough balance for all transfers
+            const currentBalance = await ethConnection.getBalance(adminAddress);
+            const transferAmountInEther = parseFloat(transferAmount);
+            const totalRequiredAmount = transferAmountInEther * gameAccounts.length;
+            // Add gas cost estimation (0.001 ETH per transaction)
+            const totalGasCost = 0.001 * gameAccounts.length;
+            const totalCost = totalRequiredAmount + totalGasCost;
+
+            // Convert current balance to a comparable number
+            const currentBalanceInEther = parseFloat(currentBalance.toString());
+
+            // Check if there's enough balance
+            if (currentBalanceInEther < totalCost) {
+                terminalEmitter.println(`Insufficient balance. You have ${currentBalanceInEther.toFixed(4)} ETH but need at least ${totalCost.toFixed(4)} ETH (including gas).`, TerminalTextStyle.Red);
+                alert(`Insufficient balance. You have ${currentBalanceInEther.toFixed(4)} ETH but need at least ${totalCost.toFixed(4)} ETH (including gas).`);
+                setIsTransferringToAll(false);
+                return;
+            }
+
+            // Get provider and wallet from ethConnection
+            const provider = ethConnection.getProvider();
+            const wallet = new Wallet(ethConnection.getPrivateKey(), provider);
+
+            // Execute transfers sequentially
+            let successCount = 0;
+            for (let i = 0; i < gameAccounts.length; i++) {
+                const account = gameAccounts[i];
+                try {
+                    terminalEmitter.println(`Transferring to Account ${i + 1}...`, TerminalTextStyle.Blue);
+
+                    // Execute transfer
+                    const tx = await wallet.sendTransaction({
+                        to: account.address,
+                        value: utils.parseEther(transferAmount),
+                        gasLimit: 21000, // Standard gas limit for simple ETH transfers
+                    });
+
+                    // Wait for transaction confirmation
+                    await tx.wait();
+                    successCount++;
+                    terminalEmitter.println(`Successfully transferred ${transferAmount} ETH to Account ${i + 1}`, TerminalTextStyle.Green);
+                } catch (error) {
+                    terminalEmitter.println(`Failed to transfer to Account ${i + 1}: ${error.message}`, TerminalTextStyle.Red);
+                }
+            }
+
+            // Update admin balance
+            const adminNewBalance = await ethConnection.getBalance(adminAddress);
+            setAdminBalance(adminNewBalance.toString());
+
+            // Update account balances
+            const updatedAccounts = await Promise.all(
+                gameAccounts.map(async (acc) => {
+                    const newBalance = await ethConnection.getBalance(address(acc.address));
+                    return {
+                        address: acc.address,
+                        privateKey: acc.privateKey,
+                        balance: newBalance.toString()
+                    };
+                })
+            );
+            setGameAccounts(updatedAccounts);
+
+            terminalEmitter.println(`Batch transfer complete. Successfully transferred to ${successCount} out of ${gameAccounts.length} accounts.`, TerminalTextStyle.Green);
+        } catch (error) {
+            console.error('Batch transfer failed:', error);
+            terminalEmitter.println(`Batch transfer failed: ${error.message}`, TerminalTextStyle.Red);
+        }
+
+        setIsTransferringToAll(false);
+    };
+
     return (
         <Wrapper initRender={initRenderState} terminalEnabled={terminalEnabled}>
             {modal === ModalState.GAS_PRICES && (
@@ -951,7 +1043,7 @@ export default function LobbyLandingPage(_props: { replayMode: boolean }) {
                     </ConfigHeader>
 
                     <ConfigPanelContent $isOpen={isConfigOpen}>
-                        {initState === InitState.COMPLETE ? (<>
+                        {initState === InitState.COMPLETE && isGameManagerInitialized ? (<>
                             <GameConfigPanel
                                 onSaveConfig={handleSaveSettings}
                                 initialConfig={gameConfig}
@@ -986,7 +1078,11 @@ export default function LobbyLandingPage(_props: { replayMode: boolean }) {
                                 gap: '10px'
                             }}>
                                 <div style={{ fontSize: '18px', color: '#00ADE1' }}>⚠️ Account Required</div>
-                                <div>Please complete the account setup in the terminal above to access game configuration.</div>
+                                <div>
+                                    {!isGameManagerInitialized && initState === InitState.COMPLETE ?
+                                        "Initializing game manager. Please wait..." :
+                                        "Please complete the account setup in the terminal above to access game configuration."}
+                                </div>
                             </div>
                         )}
                     </ConfigPanelContent>
@@ -999,7 +1095,7 @@ export default function LobbyLandingPage(_props: { replayMode: boolean }) {
                     </ConfigHeader>
 
                     <ConfigPanelContent $isOpen={isAdminOpen}>
-                        {initState === InitState.COMPLETE ? (
+                        {initState === InitState.COMPLETE && isGameManagerInitialized ? (
                             <div style={{ padding: '20px' }}>
                                 <AdminInfoContainer>
                                     <SectionTitle>Admin Account Information</SectionTitle>
@@ -1063,6 +1159,16 @@ export default function LobbyLandingPage(_props: { replayMode: boolean }) {
                                             min="0"
                                         />
                                         <span style={{ color: '#888' }}>ETH</span>
+                                        <BlueButton
+                                            onClick={transferToAllAccounts}
+                                            style={{
+                                                marginLeft: '15px',
+                                                opacity: (isTransferringToAll || gameAccounts.length === 0 || !deployedContractAddress) ? 0.5 : 1,
+                                                pointerEvents: (isTransferringToAll || gameAccounts.length === 0 || !deployedContractAddress) ? 'none' : 'auto' as any
+                                            }}
+                                        >
+                                            {isTransferringToAll ? 'Transferring...' : 'Transfer to All'}
+                                        </BlueButton>
                                     </div>
                                 </div>
 
@@ -1151,7 +1257,11 @@ export default function LobbyLandingPage(_props: { replayMode: boolean }) {
                                 gap: '10px'
                             }}>
                                 <div style={{ fontSize: '18px', color: '#00ADE1' }}>⚠️ Account Required</div>
-                                <div>Please complete the account setup in the terminal above to access admin features.</div>
+                                <div>
+                                    {!isGameManagerInitialized && initState === InitState.COMPLETE ?
+                                        "Initializing game manager. Please wait..." :
+                                        "Please complete the account setup in the terminal above to access admin features."}
+                                </div>
                             </div>
                         )}
                     </ConfigPanelContent>
