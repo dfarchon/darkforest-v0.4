@@ -984,28 +984,29 @@ export default function LobbyLandingPage(_props: { replayMode: boolean }) {
                     // Wait for transaction confirmation
                     await tx.wait();
                     successCount++;
+
+                    // Update this specific account's balance immediately
+                    const newBalance = await ethConnection.getBalance(address(account.address));
+
+                    // Create updated accounts array with the new balance for this account
+                    const updatedAccounts = [...gameAccounts];
+                    updatedAccounts[i] = {
+                        ...account,
+                        balance: newBalance.toString()
+                    };
+                    setGameAccounts(updatedAccounts);
+
+                    // Also update admin balance after each transfer
+                    const adminNewBalance = await ethConnection.getBalance(adminAddress);
+                    setAdminBalance(adminNewBalance.toString());
+
                     terminalEmitter.println(`Successfully transferred ${transferAmount} ETH to Account ${i + 1}`, TerminalTextStyle.Green);
                 } catch (error) {
                     terminalEmitter.println(`Failed to transfer to Account ${i + 1}: ${error.message}`, TerminalTextStyle.Red);
                 }
             }
 
-            // Update admin balance
-            const adminNewBalance = await ethConnection.getBalance(adminAddress);
-            setAdminBalance(adminNewBalance.toString());
-
-            // Update account balances
-            const updatedAccounts = await Promise.all(
-                gameAccounts.map(async (acc) => {
-                    const newBalance = await ethConnection.getBalance(address(acc.address));
-                    return {
-                        address: acc.address,
-                        privateKey: acc.privateKey,
-                        balance: newBalance.toString()
-                    };
-                })
-            );
-            setGameAccounts(updatedAccounts);
+            // Remove the balance update code that runs after the loop since we're now doing it for each account
 
             terminalEmitter.println(`Batch transfer complete. Successfully transferred to ${successCount} out of ${gameAccounts.length} accounts.`, TerminalTextStyle.Green);
         } catch (error) {
