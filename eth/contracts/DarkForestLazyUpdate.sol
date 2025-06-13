@@ -142,10 +142,6 @@ library DarkForestLazyUpdate {
         uint _silverNow = _planet.silver + _planetArrival.silverMoved;
 
         _planet.silver = _silverMax < _silverNow ? _silverMax : _silverNow;
-
-        _planet.silver =
-            _planet.silverCap -
-            (_planet.silver + _planetArrival.silverMoved);
     }
 
     function _applyPendingEvents(

@@ -35,6 +35,8 @@ import UIStateStorageManager, {
 import NotificationManager from '../../utils/NotificationManager';
 import { emptyAddress } from '../../utils/CheckedTypeUtils';
 import TerminalEmitter from '../../utils/TerminalEmitter';
+import Viewport from './Viewport';
+
 
 export enum GameUIManagerEvent {
   InitializedPlayer = 'InitializedPlayer',
@@ -164,6 +166,27 @@ class GameUIManager extends EventEmitter implements AbstractUIManager {
   }
 
   // actions
+
+  centerPlanet(planet: Planet | null) {
+    if (planet) {
+      Viewport.getInstance().centerPlanet(planet);
+      this.setSelectedPlanet(planet);
+    }
+  }
+
+  centerCoords(coords: WorldCoords) {
+    const planet = this.gameManager.getPlanetWithCoords(coords);
+    if (planet) {
+      this.centerPlanet(planet);
+    } else {
+      Viewport.getInstance().centerCoords(coords);
+    }
+  }
+
+  centerLocationId(planetId: LocationId) {
+    const planet = this.getPlanetWithId(planetId);
+    this.centerPlanet(planet);
+  }
 
   onJoinGameClicked(): GameUIManager {
     this.gameManager
