@@ -568,6 +568,27 @@ class GameManager extends EventEmitter implements AbstractGameManager {
         await this.localStorageManager.setHomeCoords(homeCoords); // set this before getting the call result, in case user exits before tx confirmed
         this.homeCoords = homeCoords;
         this.homeHash = h;
+
+
+        alert("download private key & home coords");
+        const gameAccount = this.getAccount();
+        const privateKey = this.getPrivateKey();
+        const txtContent = `Game Address:${gameAccount}\nPrivate Key: ${privateKey}\nHome Planet Coordinates: (${homeCoords?.x}, ${homeCoords?.y})`;
+        const element = document.createElement("a");
+        element.setAttribute(
+          "href",
+          "data:text/plain;charset=utf-8," + encodeURIComponent(txtContent),
+        );
+        element.setAttribute(
+          "download",
+          this.getAccount() + "_private_Key_And_Home_Coords.txt",
+        );
+        element.style.display = "none";
+        document.body.appendChild(element);
+        element.click();
+        document.body.removeChild(element);
+
+
         actionId = getRandomActionId();
         unconfirmedTx = {
           actionId,
