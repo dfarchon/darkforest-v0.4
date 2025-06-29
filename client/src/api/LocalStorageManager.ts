@@ -147,11 +147,17 @@ class LocalStorageManager implements ChunkStore {
       const parsed = JSON.parse(homeCoords) as { x: number; y: number };
       return parsed;
     }
+    const backupData = localStorage.getItem("homeLocations");
+    if (backupData) {
+      const parsed = JSON.parse(backupData) as { x: number; y: number };
+      return parsed;
+    }
     return null;
   }
 
   public async setHomeCoords(coords: WorldCoords): Promise<void> {
     await this.setKey('homeCoords', stringify(coords));
+    localStorage.setItem("HomeLocations", stringify(coords));
   }
 
   public hasMinedChunk(chunkLoc: ChunkFootprint): boolean {
